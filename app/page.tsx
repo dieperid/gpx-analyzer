@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, DragEvent, useRef, useState } from "react";
+import RouteMap from "@/components/route-map";
 import {
   EmptyGpxError,
   InvalidGpxError,
@@ -158,73 +159,100 @@ export default function Home() {
           </section>
         ) : null}
 
-        <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
-            <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  Loaded route
-                </p>
-                <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-                  {loadedRoute?.route.name ??
-                    loadedRoute?.fileName ??
-                    "Waiting for import"}
-                </h2>
-              </div>
-              <div className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
-                {loadedRoute ? "Ready" : "Idle"}
-              </div>
+        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
+          <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Loaded route
+              </p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+                {loadedRoute?.route.name ??
+                  loadedRoute?.fileName ??
+                  "Waiting for import"}
+              </h2>
             </div>
-
-            {loadedRoute ? (
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                <MetricCard
-                  label="Main track"
-                  value={`#${loadedRoute.route.sourceTrackIndex + 1}`}
-                />
-                <MetricCard
-                  label="Tracks"
-                  value={loadedRoute.route.trackCount.toLocaleString()}
-                />
-                <MetricCard
-                  label="Segments"
-                  value={loadedRoute.route.segmentCount.toLocaleString()}
-                />
-                <MetricCard
-                  label="Track points"
-                  value={loadedRoute.route.points.length.toLocaleString()}
-                />
-                <MetricCard
-                  label="Distance"
-                  value={formatDistance(loadedRoute.route.totalDistanceMeters)}
-                />
-                <MetricCard
-                  label="Elevation samples"
-                  value={loadedRoute.route.elevationPointCount.toLocaleString()}
-                />
-                <MetricCard
-                  label="Total ascent"
-                  value={formatElevation(loadedRoute.route.totalAscentMeters)}
-                />
-                <MetricCard
-                  label="Total descent"
-                  value={formatElevation(loadedRoute.route.totalDescentMeters)}
-                />
-                <MetricCard
-                  label="Ignored points"
-                  value={loadedRoute.route.ignoredPointCount.toLocaleString()}
-                />
-              </div>
-            ) : (
-              <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm leading-6 text-slate-600">
-                Import a file to confirm that the GPX content is read correctly.
-                Once parsed, the extracted tracks, segments, points, and total
-                distance will appear here automatically.
-              </div>
-            )}
+            <div className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
+              {loadedRoute ? "Ready" : "Idle"}
+            </div>
           </div>
 
-          <ElevationProfilePanel route={loadedRoute?.route ?? null} />
+          {loadedRoute ? (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <MetricCard
+                label="Main track"
+                value={`#${loadedRoute.route.sourceTrackIndex + 1}`}
+              />
+              <MetricCard
+                label="Tracks"
+                value={loadedRoute.route.trackCount.toLocaleString()}
+              />
+              <MetricCard
+                label="Segments"
+                value={loadedRoute.route.segmentCount.toLocaleString()}
+              />
+              <MetricCard
+                label="Track points"
+                value={loadedRoute.route.points.length.toLocaleString()}
+              />
+              <MetricCard
+                label="Distance"
+                value={formatDistance(loadedRoute.route.totalDistanceMeters)}
+              />
+              <MetricCard
+                label="Elevation samples"
+                value={loadedRoute.route.elevationPointCount.toLocaleString()}
+              />
+              <MetricCard
+                label="Total ascent"
+                value={formatElevation(loadedRoute.route.totalAscentMeters)}
+              />
+              <MetricCard
+                label="Total descent"
+                value={formatElevation(loadedRoute.route.totalDescentMeters)}
+              />
+              <MetricCard
+                label="Ignored points"
+                value={loadedRoute.route.ignoredPointCount.toLocaleString()}
+              />
+            </div>
+          ) : (
+            <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm leading-6 text-slate-600">
+              Import a file to confirm that the GPX content is read correctly.
+              Once parsed, the extracted tracks, segments, points, and total
+              distance will appear here automatically.
+            </div>
+          )}
+        </section>
+
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
+          <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-6 py-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Route visualization
+              </p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+                {loadedRoute?.route.name ??
+                  loadedRoute?.fileName ??
+                  "Map and profile"}
+              </h2>
+            </div>
+            <div className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
+              {loadedRoute ? "Auto-fit enabled" : "Awaiting import"}
+            </div>
+          </div>
+
+          {loadedRoute ? (
+            <>
+              <RouteMap route={loadedRoute.route} embedded />
+              <div className="overflow-hidden rounded-b-[28px] border-t border-slate-100 bg-[linear-gradient(180deg,#0f172a_0%,#172554_100%)]">
+                <ElevationProfilePanel route={loadedRoute.route} embedded />
+              </div>
+            </>
+          ) : (
+            <div className="flex h-[620px] items-center justify-center bg-slate-50 px-6 text-sm text-slate-500">
+              Import a GPX file to display the route map and elevation profile.
+            </div>
+          )}
         </section>
       </div>
     </main>
@@ -267,19 +295,31 @@ function formatElevation(elevationMeters: number | null): string {
   return `${Math.round(elevationMeters)} m`;
 }
 
-function ElevationProfilePanel({ route }: { route: ParsedGpxRoute | null }) {
+function ElevationProfilePanel({
+  route,
+  embedded = false,
+}: {
+  route: ParsedGpxRoute | null;
+  embedded?: boolean;
+}) {
   const startPoint = route?.points[0] ?? null;
   const endPoint = route?.points[route.points.length - 1] ?? null;
 
   return (
-    <div className="rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,#0f172a_0%,#172554_100%)] p-6 text-white shadow-[0_18px_48px_rgba(15,23,42,0.14)]">
+    <div
+      className={
+        embedded
+          ? "p-6 text-white"
+          : "rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,#0f172a_0%,#172554_100%)] p-6 text-white shadow-[0_18px_48px_rgba(15,23,42,0.14)]"
+      }
+    >
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-200">
         Elevation profile
       </p>
 
       {route ? (
         <div className="mt-5 space-y-5 text-sm leading-6 text-slate-200">
-          <ProfileChart route={route} />
+          <ProfileChart route={route} fullBleed={embedded} />
           <DetailRow
             label="Segment lengths"
             value={route.segments
@@ -323,10 +363,20 @@ function formatCoordinate(point: ParsedGpxRoute["points"][number]): string {
   return `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
 }
 
-function ProfileChart({ route }: { route: ParsedGpxRoute }) {
+function ProfileChart({
+  route,
+  fullBleed = false,
+}: {
+  route: ParsedGpxRoute;
+  fullBleed?: boolean;
+}) {
   if (route.elevationProfile.length < 2) {
     return (
-      <div className="rounded-2xl border border-dashed border-white/15 bg-white/5 px-4 py-10 text-center text-slate-300">
+      <div
+        className={`border-dashed border-white/15 bg-white/5 px-4 py-10 text-center text-slate-300 ${
+          fullBleed ? "border-y" : "rounded-2xl border"
+        }`}
+      >
         Elevation data is missing or too sparse to draw a profile.
       </div>
     );
@@ -338,11 +388,16 @@ function ProfileChart({ route }: { route: ParsedGpxRoute }) {
   const minElevation = Math.min(...elevations);
   const maxElevation = Math.max(...elevations);
   const elevationRange = Math.max(maxElevation - minElevation, 1);
-  const distanceRange = Math.max(route.totalDistanceMeters, 1);
+  const profileStartDistance = route.elevationProfile[0].distanceMeters;
+  const profileEndDistance =
+    route.elevationProfile[route.elevationProfile.length - 1].distanceMeters;
+  const distanceRange = Math.max(profileEndDistance - profileStartDistance, 1);
 
   const points = route.elevationProfile
     .map((sample) => {
-      const x = (sample.distanceMeters / distanceRange) * chartWidth;
+      const x =
+        ((sample.distanceMeters - profileStartDistance) / distanceRange) *
+        chartWidth;
       const y =
         chartHeight -
         ((sample.elevation - minElevation) / elevationRange) * chartHeight;
@@ -352,8 +407,16 @@ function ProfileChart({ route }: { route: ParsedGpxRoute }) {
     .join(" ");
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div className="mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-[0.18em] text-sky-200">
+    <div
+      className={`border-white/10 bg-white/5 ${
+        fullBleed ? "border-y py-4 rounded-2xl" : "rounded-2xl border p-4"
+      }`}
+    >
+      <div
+        className={`mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-[0.18em] text-sky-200 ${
+          fullBleed ? "px-6" : ""
+        }`}
+      >
         <span>Profile</span>
         <span>{route.elevationPointCount} samples</span>
       </div>
@@ -374,7 +437,11 @@ function ProfileChart({ route }: { route: ParsedGpxRoute }) {
         />
       </svg>
 
-      <div className="mt-3 flex items-center justify-between text-xs text-slate-300">
+      <div
+        className={`mt-3 flex items-center justify-between text-xs text-slate-300 ${
+          fullBleed ? "px-6" : ""
+        }`}
+      >
         <span>{formatElevation(maxElevation)}</span>
         <span>{formatDistance(route.totalDistanceMeters)}</span>
         <span>{formatElevation(minElevation)}</span>
