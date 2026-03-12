@@ -15,12 +15,24 @@ type LoadedRoute = {
   route: ParsedGpxRoute;
 };
 
+type TargetTimeInput = {
+  hours: string;
+  minutes: string;
+  seconds: string;
+};
+
 export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [loadedRoute, setLoadedRoute] = useState<LoadedRoute | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [targetTimeInput, setTargetTimeInput] = useState<TargetTimeInput>({
+    hours: "",
+    minutes: "",
+    seconds: "",
+  });
+  const targetTime = parseTargetTimeInput(targetTimeInput);
 
   async function handleFileSelection(file: File | null) {
     if (!file) {
@@ -73,6 +85,19 @@ export default function Home() {
     event.preventDefault();
     setIsDragging(false);
     void handleFileSelection(event.dataTransfer.files?.[0] ?? null);
+  }
+
+  function onTargetTimeFieldChange(
+    field: keyof TargetTimeInput,
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
+    const digitsOnly = event.target.value.replace(/\D/g, "");
+    const maxLength = field === "hours" ? 3 : 2;
+
+    setTargetTimeInput((currentValue) => ({
+      ...currentValue,
+      [field]: digitsOnly.slice(0, maxLength),
+    }));
   }
 
   return (
@@ -224,6 +249,61 @@ export default function Home() {
           )}
         </section>
 
+        <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  Target time
+                </p>
+                <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+                  Define your total goal
+                </h2>
+              </div>
+              <div className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
+                {targetTime.status === "valid" ? "Ready" : "Waiting"}
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              <TimeField
+                label="Hours"
+                placeholder="00"
+                value={targetTimeInput.hours}
+                onChange={(event) => onTargetTimeFieldChange("hours", event)}
+              />
+              <TimeField
+                label="Minutes"
+                placeholder="00"
+                value={targetTimeInput.minutes}
+                onChange={(event) => onTargetTimeFieldChange("minutes", event)}
+              />
+              <TimeField
+                label="Seconds"
+                placeholder="00"
+                value={targetTimeInput.seconds}
+                onChange={(event) => onTargetTimeFieldChange("seconds", event)}
+              />
+            </div>
+
+            {targetTime.status === "invalid" ? (
+              <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                {targetTime.errorMessage}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm leading-6 text-slate-600">
+                Enter `hours`, `minutes`, and `seconds`. Minutes and seconds must
+                stay between `00` and `59`.
+              </p>
+            )}
+          </div>
+
+          <TargetTimeSummary
+            route={loadedRoute?.route ?? null}
+            targetTime={targetTime}
+          />
+        </section>
+
         <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
           <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-6 py-4">
             <div>
@@ -280,6 +360,34 @@ function MetricCard({ label, value }: { label: string; value: string }) {
         {value}
       </p>
     </div>
+  );
+}
+
+function TimeField({
+  label,
+  placeholder,
+  value,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <label className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </span>
+      <input
+        inputMode="numeric"
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        className="mt-3 w-full border-0 bg-transparent p-0 text-4xl font-semibold tracking-tight text-slate-950 outline-none placeholder:text-slate-300"
+      />
+    </label>
   );
 }
 
@@ -361,6 +469,90 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 function formatCoordinate(point: ParsedGpxRoute["points"][number]): string {
   return `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
+}
+
+function TargetTimeSummary({
+  route,
+  targetTime,
+}: {
+  route: ParsedGpxRoute | null;
+  targetTime: ParsedTargetTime;
+}) {
+  const hasRoute = route !== null;
+  const pacePerKmSeconds =
+    hasRoute && targetTime.status === "valid"
+      ? targetTime.totalSeconds / Math.max(route.totalDistanceMeters / 1000, 0.001)
+      : null;
+  const averageSpeedKmh =
+    hasRoute && targetTime.status === "valid"
+      ? (route.totalDistanceMeters / 1000) / (targetTime.totalSeconds / 3600)
+      : null;
+
+  return (
+    <div className="rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,#0f172a_0%,#172554_100%)] p-6 text-white shadow-[0_18px_48px_rgba(15,23,42,0.14)]">
+      <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-200">
+            Live conversion
+          </p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-white">
+            Target time output
+          </h2>
+        </div>
+        <div className="rounded-full bg-white/10 px-3 py-1 text-sm text-slate-200">
+          {targetTime.status === "valid" ? "Live" : "Incomplete"}
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <DarkMetricCard
+          label="Formatted time"
+          value={
+            targetTime.status === "valid"
+              ? formatDuration(targetTime.totalSeconds)
+              : "--:--:--"
+          }
+        />
+        <DarkMetricCard
+          label="Usable seconds"
+          value={
+            targetTime.status === "valid"
+              ? targetTime.totalSeconds.toLocaleString()
+              : "0"
+          }
+        />
+        <DarkMetricCard
+          label="Average pace"
+          value={pacePerKmSeconds !== null ? formatPace(pacePerKmSeconds) : "-- /km"}
+        />
+        <DarkMetricCard
+          label="Average speed"
+          value={
+            averageSpeedKmh !== null ? `${averageSpeedKmh.toFixed(2)} km/h` : "-- km/h"
+          }
+        />
+      </div>
+
+      {!hasRoute ? (
+        <p className="mt-4 text-sm leading-6 text-slate-300">
+          Import a route to convert the target time into route-based calculations.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function DarkMetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-200">
+        {label}
+      </p>
+      <p className="mt-3 text-3xl font-semibold tracking-tight text-white">
+        {value}
+      </p>
+    </div>
+  );
 }
 
 function ProfileChart({
@@ -448,4 +640,91 @@ function ProfileChart({
       </div>
     </div>
   );
+}
+
+type ParsedTargetTime =
+  | {
+      status: "empty";
+      errorMessage: null;
+      totalSeconds: null;
+    }
+  | {
+      status: "invalid";
+      errorMessage: string;
+      totalSeconds: null;
+    }
+  | {
+      status: "valid";
+      errorMessage: null;
+      totalSeconds: number;
+    };
+
+function parseTargetTimeInput(input: TargetTimeInput): ParsedTargetTime {
+  const hasAnyValue = Object.values(input).some((value) => value.length > 0);
+
+  if (!hasAnyValue) {
+    return {
+      status: "empty",
+      errorMessage: null,
+      totalSeconds: null,
+    };
+  }
+
+  const hours = input.hours === "" ? 0 : Number.parseInt(input.hours, 10);
+  const minutes = input.minutes === "" ? 0 : Number.parseInt(input.minutes, 10);
+  const seconds = input.seconds === "" ? 0 : Number.parseInt(input.seconds, 10);
+
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || !Number.isInteger(seconds)) {
+    return {
+      status: "invalid",
+      errorMessage: "Only numeric values are allowed for the target time.",
+      totalSeconds: null,
+    };
+  }
+
+  if (minutes > 59 || seconds > 59) {
+    return {
+      status: "invalid",
+      errorMessage: "Minutes and seconds must stay between 00 and 59.",
+      totalSeconds: null,
+    };
+  }
+
+  const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+
+  if (totalSeconds <= 0) {
+    return {
+      status: "invalid",
+      errorMessage: "Enter a target time greater than zero.",
+      totalSeconds: null,
+    };
+  }
+
+  return {
+    status: "valid",
+    errorMessage: null,
+    totalSeconds,
+  };
+}
+
+function formatDuration(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return [hours, minutes, seconds]
+    .map((value) => value.toString().padStart(2, "0"))
+    .join(":");
+}
+
+function formatPace(secondsPerKilometer: number): string {
+  if (!Number.isFinite(secondsPerKilometer) || secondsPerKilometer <= 0) {
+    return "-- /km";
+  }
+
+  const totalSeconds = Math.round(secondsPerKilometer);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}:${seconds.toString().padStart(2, "0")} /km`;
 }
