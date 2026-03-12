@@ -4,11 +4,31 @@ export type GpxPoint = {
   elevation: number | null;
 };
 
+export type GpxSegment = {
+  index: number;
+  points: GpxPoint[];
+  totalDistanceMeters: number;
+};
+
 export type ParsedGpxRoute = {
   name: string | null;
   points: GpxPoint[];
+  segments: GpxSegment[];
   trackCount: number;
   segmentCount: number;
+  totalDistanceMeters: number;
+  ignoredPointCount: number;
+  sourceTrackIndex: number;
+};
+
+type ParsedTrack = {
+  index: number;
+  name: string | null;
+  points: GpxPoint[];
+  segments: GpxSegment[];
+  rawSegmentCount: number;
+  rawPointCount: number;
+  ignoredPointCount: number;
   totalDistanceMeters: number;
 };
 
@@ -50,59 +70,124 @@ export function parseGpx(xmlContent: string): ParsedGpxRoute {
     throw new InvalidGpxError();
   }
 
-  const tracks = getChildrenByName(root, "trk");
-  if (tracks.length === 0) {
+  const trackNodes = getChildrenByName(root, "trk");
+  if (trackNodes.length === 0) {
     throw new EmptyGpxError("This GPX file does not contain any track data.");
   }
 
-  const points: GpxPoint[] = [];
-  let routeName: string | null = null;
-  let segmentCount = 0;
-  let rawTrackPointCount = 0;
+  const tracks = trackNodes.map((trackNode, index) => parseTrack(trackNode, index));
+  const totalRawPointCount = tracks.reduce(
+    (sum, track) => sum + track.rawPointCount,
+    0,
+  );
 
-  for (const track of tracks) {
-    routeName ??= getTextContent(getChildrenByName(track, "name")[0]);
-
-    for (const segment of getChildrenByName(track, "trkseg")) {
-      segmentCount += 1;
-
-      for (const point of getChildrenByName(segment, "trkpt")) {
-        rawTrackPointCount += 1;
-        const latitude = Number(point.getAttribute("lat"));
-        const longitude = Number(point.getAttribute("lon"));
-
-        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-          continue;
-        }
-
-        const elevationNode = getChildrenByName(point, "ele")[0];
-        const elevation = elevationNode
-          ? Number.parseFloat(elevationNode.textContent ?? "")
-          : null;
-
-        points.push({
-          latitude,
-          longitude,
-          elevation: Number.isFinite(elevation) ? elevation : null,
-        });
-      }
-    }
-  }
-
-  if (segmentCount === 0 || rawTrackPointCount === 0) {
+  if (totalRawPointCount === 0) {
     throw new EmptyGpxError("This GPX file does not contain any track points.");
   }
 
-  if (points.length < 2) {
+  const mainTrack = selectMainTrack(tracks);
+  if (!mainTrack || mainTrack.points.length < 2) {
     throw new NoUsableTrackError();
   }
 
   return {
-    name: routeName,
+    name: mainTrack.name,
+    points: mainTrack.points,
+    segments: mainTrack.segments,
+    trackCount: trackNodes.length,
+    segmentCount: mainTrack.rawSegmentCount,
+    totalDistanceMeters: mainTrack.totalDistanceMeters,
+    ignoredPointCount: mainTrack.ignoredPointCount,
+    sourceTrackIndex: mainTrack.index,
+  };
+}
+
+function parseTrack(trackNode: Element, index: number): ParsedTrack {
+  const segmentNodes = getChildrenByName(trackNode, "trkseg");
+  const segments: GpxSegment[] = [];
+  const points: GpxPoint[] = [];
+  let rawPointCount = 0;
+  let ignoredPointCount = 0;
+
+  for (const [segmentIndex, segmentNode] of segmentNodes.entries()) {
+    const segmentPoints: GpxPoint[] = [];
+
+    for (const pointNode of getChildrenByName(segmentNode, "trkpt")) {
+      rawPointCount += 1;
+
+      const point = parseTrackPoint(pointNode);
+      if (!point) {
+        ignoredPointCount += 1;
+        continue;
+      }
+
+      segmentPoints.push(point);
+      points.push(point);
+    }
+
+    if (segmentPoints.length === 0) {
+      continue;
+    }
+
+    segments.push({
+      index: segmentIndex,
+      points: segmentPoints,
+      totalDistanceMeters: calculateTotalDistance(segmentPoints),
+    });
+  }
+
+  return {
+    index,
+    name: getTextContent(getChildrenByName(trackNode, "name")[0]),
     points,
-    trackCount: tracks.length,
-    segmentCount,
+    segments,
+    rawSegmentCount: segmentNodes.length,
+    rawPointCount,
+    ignoredPointCount,
     totalDistanceMeters: calculateTotalDistance(points),
+  };
+}
+
+function selectMainTrack(tracks: ParsedTrack[]): ParsedTrack | null {
+  const candidates = tracks.filter((track) => track.points.length > 0);
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  return candidates.reduce((bestTrack, currentTrack) => {
+    if (currentTrack.points.length > bestTrack.points.length) {
+      return currentTrack;
+    }
+
+    if (
+      currentTrack.points.length === bestTrack.points.length &&
+      currentTrack.totalDistanceMeters > bestTrack.totalDistanceMeters
+    ) {
+      return currentTrack;
+    }
+
+    return bestTrack;
+  });
+}
+
+function parseTrackPoint(pointNode: Element): GpxPoint | null {
+  const latitude = Number(pointNode.getAttribute("lat"));
+  const longitude = Number(pointNode.getAttribute("lon"));
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+
+  const elevationNode = getChildrenByName(pointNode, "ele")[0];
+  const elevation = elevationNode
+    ? Number.parseFloat(elevationNode.textContent ?? "")
+    : null;
+
+  return {
+    latitude,
+    longitude,
+    elevation: Number.isFinite(elevation) ? elevation : null,
   };
 }
 

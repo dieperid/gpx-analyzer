@@ -86,8 +86,8 @@ export default function Home() {
 
               <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
                 <InfoCard label="Read mode" value="client-side" />
-                <InfoCard label="GPX XML" value="parsed" />
-                <InfoCard label="Track data" value="extracted" />
+                <InfoCard label="Main track" value="selected" />
+                <InfoCard label="Segments" value="merged" />
               </div>
             </div>
 
@@ -179,6 +179,10 @@ export default function Home() {
             {loadedRoute ? (
               <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <MetricCard
+                  label="Main track"
+                  value={`#${loadedRoute.route.sourceTrackIndex + 1}`}
+                />
+                <MetricCard
                   label="Tracks"
                   value={loadedRoute.route.trackCount.toLocaleString()}
                 />
@@ -195,10 +199,8 @@ export default function Home() {
                   value={formatDistance(loadedRoute.route.totalDistanceMeters)}
                 />
                 <MetricCard
-                  label="Elevation data"
-                  value={
-                    hasElevation(loadedRoute.route) ? "available" : "missing"
-                  }
+                  label="Ignored points"
+                  value={loadedRoute.route.ignoredPointCount.toLocaleString()}
                 />
               </div>
             ) : (
@@ -209,6 +211,8 @@ export default function Home() {
               </div>
             )}
           </div>
+
+          <TrackDetailsPanel route={loadedRoute?.route ?? null} />
         </section>
       </div>
     </main>
@@ -243,6 +247,57 @@ function formatDistance(distanceMeters: number): string {
   return `${(distanceMeters / 1000).toFixed(2)} km`;
 }
 
-function hasElevation(route: ParsedGpxRoute): boolean {
-  return route.points.some((point) => point.elevation !== null);
+function TrackDetailsPanel({ route }: { route: ParsedGpxRoute | null }) {
+  const startPoint = route?.points[0] ?? null;
+  const endPoint = route?.points[route.points.length - 1] ?? null;
+
+  return (
+    <div className="rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,#0f172a_0%,#172554_100%)] p-6 text-white shadow-[0_18px_48px_rgba(15,23,42,0.14)]">
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-200">
+        Route details
+      </p>
+
+      {route ? (
+        <div className="mt-5 space-y-5 text-sm leading-6 text-slate-200">
+          <DetailRow
+            label="Segment lengths"
+            value={route.segments
+              .map(
+                (segment) =>
+                  `#${segment.index + 1}: ${segment.points.length} pts / ${formatDistance(segment.totalDistanceMeters)}`,
+              )
+              .join(" | ")}
+          />
+          <DetailRow
+            label="Start coordinate"
+            value={startPoint ? formatCoordinate(startPoint) : "Unavailable"}
+          />
+          <DetailRow
+            label="End coordinate"
+            value={endPoint ? formatCoordinate(endPoint) : "Unavailable"}
+          />
+        </div>
+      ) : (
+        <p className="mt-5 text-sm leading-6 text-slate-300">
+          After import, the selected main track will appear here with merged
+          segment details and ordered start/end coordinates.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-200">
+        {label}
+      </p>
+      <p className="mt-2 text-sm leading-6 text-white">{value}</p>
+    </div>
+  );
+}
+
+function formatCoordinate(point: ParsedGpxRoute["points"][number]): string {
+  return `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
 }
