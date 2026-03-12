@@ -646,10 +646,12 @@ function SplitMarkersSection({
           </div>
 
           <div className="mt-6 overflow-hidden rounded-3xl border border-slate-200">
-            <div className="grid grid-cols-[120px_1fr_140px_140px] gap-4 bg-slate-50 px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <div className="grid grid-cols-[110px_1fr_130px_110px_110px_150px] gap-4 bg-slate-50 px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               <span>Marker</span>
               <span>Distance</span>
               <span>Estimated time</span>
+              <span>Gain</span>
+              <span>Loss</span>
               <span>Coordinate</span>
             </div>
 
@@ -657,11 +659,13 @@ function SplitMarkersSection({
               {splitMarkers.map((marker) => (
                 <div
                   key={`${marker.kind}-${marker.label}-${marker.cumulativeDistanceMeters}`}
-                  className="grid grid-cols-[120px_1fr_140px_140px] gap-4 px-5 py-4 text-sm text-slate-700"
+                  className="grid grid-cols-[110px_1fr_130px_110px_110px_150px] gap-4 px-5 py-4 text-sm text-slate-700"
                 >
                   <span className="font-semibold text-slate-950">{marker.label}</span>
                   <span>{formatDistance(marker.cumulativeDistanceMeters)}</span>
                   <span>{formatDuration(marker.estimatedTimeSeconds)}</span>
+                  <span>{formatElevation(marker.elevationGainMeters)}</span>
+                  <span>{formatElevation(marker.elevationLossMeters)}</span>
                   <span className="truncate text-slate-500">
                     {marker.latitude.toFixed(4)}, {marker.longitude.toFixed(4)}
                   </span>
