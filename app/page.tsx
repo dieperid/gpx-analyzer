@@ -9,6 +9,7 @@ import {
   parseGpx,
   type ParsedGpxRoute,
 } from "@/lib/gpx";
+import { buildSplitMarkers } from "@/lib/splits";
 
 type LoadedRoute = {
   fileName: string;
@@ -33,6 +34,10 @@ export default function Home() {
     seconds: "",
   });
   const targetTime = parseTargetTimeInput(targetTimeInput);
+  const splitMarkers =
+    loadedRoute !== null && targetTime.status === "valid"
+      ? buildSplitMarkers(loadedRoute.route, targetTime.totalSeconds)
+      : [];
 
   async function handleFileSelection(file: File | null) {
     if (!file) {
@@ -304,6 +309,12 @@ export default function Home() {
           />
         </section>
 
+        <SplitMarkersSection
+          route={loadedRoute?.route ?? null}
+          targetTime={targetTime}
+          splitMarkers={splitMarkers}
+        />
+
         <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
           <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-6 py-4">
             <div>
@@ -493,10 +504,10 @@ function TargetTimeSummary({
       <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-200">
-            Live conversion
+            Global indicators
           </p>
           <h2 className="mt-1 text-2xl font-semibold tracking-tight text-white">
-            Target time output
+            Route and goal summary
           </h2>
         </div>
         <div className="rounded-full bg-white/10 px-3 py-1 text-sm text-slate-200">
@@ -506,11 +517,38 @@ function TargetTimeSummary({
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <DarkMetricCard
-          label="Formatted time"
+          label="Total distance"
+          value={
+            hasRoute ? formatDistance(route.totalDistanceMeters) : "-- km"
+          }
+        />
+        <DarkMetricCard
+          label="Target time"
           value={
             targetTime.status === "valid"
               ? formatDuration(targetTime.totalSeconds)
               : "--:--:--"
+          }
+        />
+        <DarkMetricCard
+          label="Average pace"
+          value={pacePerKmSeconds !== null ? formatPace(pacePerKmSeconds) : "-- /km"}
+        />
+        <DarkMetricCard
+          label="Estimated finish"
+          value={
+            targetTime.status === "valid"
+              ? formatDuration(targetTime.totalSeconds)
+              : "--:--:--"
+          }
+        />
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <DarkMetricCard
+          label="Average speed"
+          value={
+            averageSpeedKmh !== null ? `${averageSpeedKmh.toFixed(2)} km/h` : "-- km/h"
           }
         />
         <DarkMetricCard
@@ -521,21 +559,16 @@ function TargetTimeSummary({
               : "0"
           }
         />
-        <DarkMetricCard
-          label="Average pace"
-          value={pacePerKmSeconds !== null ? formatPace(pacePerKmSeconds) : "-- /km"}
-        />
-        <DarkMetricCard
-          label="Average speed"
-          value={
-            averageSpeedKmh !== null ? `${averageSpeedKmh.toFixed(2)} km/h` : "-- km/h"
-          }
-        />
       </div>
 
       {!hasRoute ? (
         <p className="mt-4 text-sm leading-6 text-slate-300">
           Import a route to convert the target time into route-based calculations.
+        </p>
+      ) : targetTime.status !== "valid" ? (
+        <p className="mt-4 text-sm leading-6 text-slate-300">
+          Enter a valid target time to calculate the theoretical average pace and
+          keep the summary indicators in sync.
         </p>
       ) : null}
     </div>
@@ -552,6 +585,93 @@ function DarkMetricCard({ label, value }: { label: string; value: string }) {
         {value}
       </p>
     </div>
+  );
+}
+
+function SplitMarkersSection({
+  route,
+  targetTime,
+  splitMarkers,
+}: {
+  route: ParsedGpxRoute | null;
+  targetTime: ParsedTargetTime;
+  splitMarkers: ReturnType<typeof buildSplitMarkers>;
+}) {
+  return (
+    <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
+      <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+            Split markers
+          </p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+            Intermediate split times
+          </h2>
+        </div>
+        <div className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
+          {splitMarkers.length > 0 ? `${splitMarkers.length} markers` : "Not ready"}
+        </div>
+      </div>
+
+      {!route ? (
+        <p className="mt-6 text-sm leading-6 text-slate-600">
+          Import a route to generate kilometer markers and the finish marker.
+        </p>
+      ) : targetTime.status !== "valid" ? (
+        <p className="mt-6 text-sm leading-6 text-slate-600">
+          Enter a valid target time to calculate split times proportional to the
+          cumulative distance.
+        </p>
+      ) : (
+        <>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <MetricCard
+              label="Last split"
+              value={splitMarkers[splitMarkers.length - 1]?.label ?? "Finish"}
+            />
+            <MetricCard
+              label="Final distance"
+              value={formatDistance(
+                splitMarkers[splitMarkers.length - 1]?.cumulativeDistanceMeters ??
+                  route.totalDistanceMeters,
+              )}
+            />
+            <MetricCard
+              label="Final time"
+              value={formatDuration(
+                splitMarkers[splitMarkers.length - 1]?.estimatedTimeSeconds ??
+                  targetTime.totalSeconds,
+              )}
+            />
+          </div>
+
+          <div className="mt-6 overflow-hidden rounded-3xl border border-slate-200">
+            <div className="grid grid-cols-[120px_1fr_140px_140px] gap-4 bg-slate-50 px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <span>Marker</span>
+              <span>Distance</span>
+              <span>Estimated time</span>
+              <span>Coordinate</span>
+            </div>
+
+            <div className="divide-y divide-slate-100">
+              {splitMarkers.map((marker) => (
+                <div
+                  key={`${marker.kind}-${marker.label}-${marker.cumulativeDistanceMeters}`}
+                  className="grid grid-cols-[120px_1fr_140px_140px] gap-4 px-5 py-4 text-sm text-slate-700"
+                >
+                  <span className="font-semibold text-slate-950">{marker.label}</span>
+                  <span>{formatDistance(marker.cumulativeDistanceMeters)}</span>
+                  <span>{formatDuration(marker.estimatedTimeSeconds)}</span>
+                  <span className="truncate text-slate-500">
+                    {marker.latitude.toFixed(4)}, {marker.longitude.toFixed(4)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 
