@@ -177,7 +177,7 @@ export default function Home() {
             </div>
 
             {loadedRoute ? (
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <MetricCard
                   label="Main track"
                   value={`#${loadedRoute.route.sourceTrackIndex + 1}`}
@@ -199,6 +199,18 @@ export default function Home() {
                   value={formatDistance(loadedRoute.route.totalDistanceMeters)}
                 />
                 <MetricCard
+                  label="Elevation samples"
+                  value={loadedRoute.route.elevationPointCount.toLocaleString()}
+                />
+                <MetricCard
+                  label="Total ascent"
+                  value={formatElevation(loadedRoute.route.totalAscentMeters)}
+                />
+                <MetricCard
+                  label="Total descent"
+                  value={formatElevation(loadedRoute.route.totalDescentMeters)}
+                />
+                <MetricCard
                   label="Ignored points"
                   value={loadedRoute.route.ignoredPointCount.toLocaleString()}
                 />
@@ -212,7 +224,7 @@ export default function Home() {
             )}
           </div>
 
-          <TrackDetailsPanel route={loadedRoute?.route ?? null} />
+          <ElevationProfilePanel route={loadedRoute?.route ?? null} />
         </section>
       </div>
     </main>
@@ -247,18 +259,27 @@ function formatDistance(distanceMeters: number): string {
   return `${(distanceMeters / 1000).toFixed(2)} km`;
 }
 
-function TrackDetailsPanel({ route }: { route: ParsedGpxRoute | null }) {
+function formatElevation(elevationMeters: number | null): string {
+  if (elevationMeters === null) {
+    return "Unavailable";
+  }
+
+  return `${Math.round(elevationMeters)} m`;
+}
+
+function ElevationProfilePanel({ route }: { route: ParsedGpxRoute | null }) {
   const startPoint = route?.points[0] ?? null;
   const endPoint = route?.points[route.points.length - 1] ?? null;
 
   return (
     <div className="rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,#0f172a_0%,#172554_100%)] p-6 text-white shadow-[0_18px_48px_rgba(15,23,42,0.14)]">
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-200">
-        Route details
+        Elevation profile
       </p>
 
       {route ? (
         <div className="mt-5 space-y-5 text-sm leading-6 text-slate-200">
+          <ProfileChart route={route} />
           <DetailRow
             label="Segment lengths"
             value={route.segments
@@ -279,8 +300,8 @@ function TrackDetailsPanel({ route }: { route: ParsedGpxRoute | null }) {
         </div>
       ) : (
         <p className="mt-5 text-sm leading-6 text-slate-300">
-          After import, the selected main track will appear here with merged
-          segment details and ordered start/end coordinates.
+          After import, the route profile will appear here with chart-ready
+          distance/elevation data and ordered track details.
         </p>
       )}
     </div>
@@ -300,4 +321,64 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 function formatCoordinate(point: ParsedGpxRoute["points"][number]): string {
   return `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
+}
+
+function ProfileChart({ route }: { route: ParsedGpxRoute }) {
+  if (route.elevationProfile.length < 2) {
+    return (
+      <div className="rounded-2xl border border-dashed border-white/15 bg-white/5 px-4 py-10 text-center text-slate-300">
+        Elevation data is missing or too sparse to draw a profile.
+      </div>
+    );
+  }
+
+  const chartWidth = 640;
+  const chartHeight = 200;
+  const elevations = route.elevationProfile.map((sample) => sample.elevation);
+  const minElevation = Math.min(...elevations);
+  const maxElevation = Math.max(...elevations);
+  const elevationRange = Math.max(maxElevation - minElevation, 1);
+  const distanceRange = Math.max(route.totalDistanceMeters, 1);
+
+  const points = route.elevationProfile
+    .map((sample) => {
+      const x = (sample.distanceMeters / distanceRange) * chartWidth;
+      const y =
+        chartHeight -
+        ((sample.elevation - minElevation) / elevationRange) * chartHeight;
+
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(" ");
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <div className="mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-[0.18em] text-sky-200">
+        <span>Profile</span>
+        <span>{route.elevationPointCount} samples</span>
+      </div>
+
+      <svg
+        viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+        className="h-52 w-full overflow-visible"
+        role="img"
+        aria-label="Elevation profile chart"
+      >
+        <polyline
+          fill="none"
+          stroke="rgba(125, 211, 252, 0.95)"
+          strokeWidth="4"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          points={points}
+        />
+      </svg>
+
+      <div className="mt-3 flex items-center justify-between text-xs text-slate-300">
+        <span>{formatElevation(maxElevation)}</span>
+        <span>{formatDistance(route.totalDistanceMeters)}</span>
+        <span>{formatElevation(minElevation)}</span>
+      </div>
+    </div>
+  );
 }

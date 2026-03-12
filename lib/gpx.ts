@@ -10,6 +10,11 @@ export type GpxSegment = {
   totalDistanceMeters: number;
 };
 
+export type ElevationSample = {
+  distanceMeters: number;
+  elevation: number;
+};
+
 export type ParsedGpxRoute = {
   name: string | null;
   points: GpxPoint[];
@@ -17,6 +22,10 @@ export type ParsedGpxRoute = {
   trackCount: number;
   segmentCount: number;
   totalDistanceMeters: number;
+  elevationProfile: ElevationSample[];
+  elevationPointCount: number;
+  totalAscentMeters: number | null;
+  totalDescentMeters: number | null;
   ignoredPointCount: number;
   sourceTrackIndex: number;
 };
@@ -90,13 +99,19 @@ export function parseGpx(xmlContent: string): ParsedGpxRoute {
     throw new NoUsableTrackError();
   }
 
+  const routeAnalysis = analyzeRoute(mainTrack.points);
+
   return {
     name: mainTrack.name,
     points: mainTrack.points,
     segments: mainTrack.segments,
     trackCount: trackNodes.length,
     segmentCount: mainTrack.rawSegmentCount,
-    totalDistanceMeters: mainTrack.totalDistanceMeters,
+    totalDistanceMeters: routeAnalysis.totalDistanceMeters,
+    elevationProfile: routeAnalysis.elevationProfile,
+    elevationPointCount: routeAnalysis.elevationProfile.length,
+    totalAscentMeters: routeAnalysis.totalAscentMeters,
+    totalDescentMeters: routeAnalysis.totalDescentMeters,
     ignoredPointCount: mainTrack.ignoredPointCount,
     sourceTrackIndex: mainTrack.index,
   };
@@ -208,6 +223,65 @@ function calculateTotalDistance(points: GpxPoint[]): number {
   }
 
   return total;
+}
+
+function analyzeRoute(points: GpxPoint[]): {
+  totalDistanceMeters: number;
+  elevationProfile: ElevationSample[];
+  totalAscentMeters: number | null;
+  totalDescentMeters: number | null;
+} {
+  let totalDistanceMeters = 0;
+  const elevationProfile: ElevationSample[] = [];
+
+  if (points[0]?.elevation !== null) {
+    elevationProfile.push({
+      distanceMeters: 0,
+      elevation: points[0].elevation,
+    });
+  }
+
+  for (let index = 1; index < points.length; index += 1) {
+    totalDistanceMeters += haversineDistance(points[index - 1], points[index]);
+
+    const elevation = points[index].elevation;
+    if (elevation !== null) {
+      elevationProfile.push({
+        distanceMeters: totalDistanceMeters,
+        elevation,
+      });
+    }
+  }
+
+  if (elevationProfile.length < 2) {
+    return {
+      totalDistanceMeters,
+      elevationProfile,
+      totalAscentMeters: null,
+      totalDescentMeters: null,
+    };
+  }
+
+  let totalAscentMeters = 0;
+  let totalDescentMeters = 0;
+
+  for (let index = 1; index < elevationProfile.length; index += 1) {
+    const elevationDelta =
+      elevationProfile[index].elevation - elevationProfile[index - 1].elevation;
+
+    if (elevationDelta > 0) {
+      totalAscentMeters += elevationDelta;
+    } else if (elevationDelta < 0) {
+      totalDescentMeters += Math.abs(elevationDelta);
+    }
+  }
+
+  return {
+    totalDistanceMeters,
+    elevationProfile,
+    totalAscentMeters,
+    totalDescentMeters,
+  };
 }
 
 function haversineDistance(start: GpxPoint, end: GpxPoint): number {
