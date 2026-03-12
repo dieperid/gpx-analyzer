@@ -7,8 +7,17 @@ export type GpxPoint = {
 export type ParsedGpxRoute = {
   name: string | null;
   points: GpxPoint[];
+  trackCount: number;
+  segmentCount: number;
   totalDistanceMeters: number;
 };
+
+export class EmptyGpxError extends Error {
+  constructor(message = "The selected GPX file is empty.") {
+    super(message);
+    this.name = "EmptyGpxError";
+  }
+}
 
 export class InvalidGpxError extends Error {
   constructor(message = "The selected file is not a valid GPX document.") {
@@ -25,6 +34,10 @@ export class NoUsableTrackError extends Error {
 }
 
 export function parseGpx(xmlContent: string): ParsedGpxRoute {
+  if (!xmlContent.trim()) {
+    throw new EmptyGpxError();
+  }
+
   const parser = new DOMParser();
   const document = parser.parseFromString(xmlContent, "application/xml");
 
@@ -38,14 +51,23 @@ export function parseGpx(xmlContent: string): ParsedGpxRoute {
   }
 
   const tracks = getChildrenByName(root, "trk");
+  if (tracks.length === 0) {
+    throw new EmptyGpxError("This GPX file does not contain any track data.");
+  }
+
   const points: GpxPoint[] = [];
   let routeName: string | null = null;
+  let segmentCount = 0;
+  let rawTrackPointCount = 0;
 
   for (const track of tracks) {
     routeName ??= getTextContent(getChildrenByName(track, "name")[0]);
 
     for (const segment of getChildrenByName(track, "trkseg")) {
+      segmentCount += 1;
+
       for (const point of getChildrenByName(segment, "trkpt")) {
+        rawTrackPointCount += 1;
         const latitude = Number(point.getAttribute("lat"));
         const longitude = Number(point.getAttribute("lon"));
 
@@ -67,6 +89,10 @@ export function parseGpx(xmlContent: string): ParsedGpxRoute {
     }
   }
 
+  if (segmentCount === 0 || rawTrackPointCount === 0) {
+    throw new EmptyGpxError("This GPX file does not contain any track points.");
+  }
+
   if (points.length < 2) {
     throw new NoUsableTrackError();
   }
@@ -74,6 +100,8 @@ export function parseGpx(xmlContent: string): ParsedGpxRoute {
   return {
     name: routeName,
     points,
+    trackCount: tracks.length,
+    segmentCount,
     totalDistanceMeters: calculateTotalDistance(points),
   };
 }

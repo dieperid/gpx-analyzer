@@ -2,6 +2,7 @@
 
 import { ChangeEvent, DragEvent, useRef, useState } from "react";
 import {
+  EmptyGpxError,
   InvalidGpxError,
   NoUsableTrackError,
   parseGpx,
@@ -26,10 +27,12 @@ export default function Home() {
     }
 
     if (!file.name.toLowerCase().endsWith(".gpx")) {
+      setLoadedRoute(null);
       setErrorMessage("Please select a file with the .gpx extension.");
       return;
     }
 
+    setLoadedRoute(null);
     setIsLoading(true);
     setErrorMessage(null);
 
@@ -43,6 +46,7 @@ export default function Home() {
       });
     } catch (error) {
       if (
+        error instanceof EmptyGpxError ||
         error instanceof InvalidGpxError ||
         error instanceof NoUsableTrackError
       ) {
@@ -81,9 +85,9 @@ export default function Home() {
               </div>
 
               <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
-                <InfoCard label="Accepted format" value=".gpx" />
-                <InfoCard label="Main track" value="parsed" />
-                <InfoCard label="Errors" value="explicit" />
+                <InfoCard label="Read mode" value="client-side" />
+                <InfoCard label="GPX XML" value="parsed" />
+                <InfoCard label="Track data" value="extracted" />
               </div>
             </div>
 
@@ -127,14 +131,6 @@ export default function Home() {
                 >
                   {isDragging ? "Drop your GPX file here" : "Choose a GPX file"}
                 </h2>
-                <p
-                  className={`max-w-sm text-sm leading-6 ${
-                    isDragging ? "text-slate-600" : "text-slate-300"
-                  }`}
-                >
-                  Click to browse your device, or drag and drop a route file
-                  here. The app reads the GPX directly in the browser.
-                </p>
               </div>
 
               <div
@@ -181,7 +177,15 @@ export default function Home() {
             </div>
 
             {loadedRoute ? (
-              <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <MetricCard
+                  label="Tracks"
+                  value={loadedRoute.route.trackCount.toLocaleString()}
+                />
+                <MetricCard
+                  label="Segments"
+                  value={loadedRoute.route.segmentCount.toLocaleString()}
+                />
                 <MetricCard
                   label="Track points"
                   value={loadedRoute.route.points.length.toLocaleString()}
@@ -199,9 +203,9 @@ export default function Home() {
               </div>
             ) : (
               <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm leading-6 text-slate-600">
-                Import a file to confirm that the route is usable. The first
-                loaded track will appear here with its filename, point count,
-                and total distance.
+                Import a file to confirm that the GPX content is read correctly.
+                Once parsed, the extracted tracks, segments, points, and total
+                distance will appear here automatically.
               </div>
             )}
           </div>
