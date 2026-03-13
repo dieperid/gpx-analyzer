@@ -53,12 +53,9 @@ export default function RouteMapClient({
               {route.name ?? `Track #${route.sourceTrackIndex + 1}`}
             </h2>
           </div>
-          <div className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
-            Auto-fit enabled
-          </div>
         </div>
       )}
-      <div className="h-[320px] w-full sm:h-[420px]">
+      <div className="h-80 w-full sm:h-105">
         <MapContainer
           center={startPosition}
           zoom={13}

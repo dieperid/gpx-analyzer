@@ -41,40 +41,6 @@ export default function Home() {
     activeRoute !== null && targetTime.status === "valid"
       ? buildSplitMarkers(activeRoute, targetTime.totalSeconds)
       : [];
-  const appState: {
-    badge: string;
-    label: string;
-    message: string;
-    tone: "empty" | "loading" | "error" | "ready";
-  } = isLoading
-    ? {
-        badge: "Processing",
-        label: "Loading route",
-        message:
-          "The GPX file is being parsed and all views will update automatically.",
-        tone: "loading",
-      }
-    : errorMessage
-      ? {
-          badge: "Error",
-          label: "Import problem",
-          message: errorMessage,
-          tone: "error",
-        }
-      : loadedRoute
-        ? {
-            badge: "Ready",
-            label: "Route loaded",
-            message: `${loadedRoute.fileName} is active across the map, profile, summary, and split table.`,
-            tone: "ready",
-          }
-        : {
-            badge: "Empty",
-            label: "Waiting for route",
-            message:
-              "Import a GPX file to unlock the route analysis, target time, map, profile, and split views.",
-            tone: "empty",
-          };
 
   async function handleFileSelection(file: File | null) {
     if (!file) {
@@ -149,17 +115,9 @@ export default function Home() {
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.24),transparent_28%),linear-gradient(180deg,#fffaf0_0%,#f8fafc_45%,#eef2ff_100%)] px-6 py-10 text-slate-950 sm:px-10 lg:px-16">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
         <section className="overflow-hidden rounded-4xl border border-white/70 bg-white/75 p-8 shadow-[0_30px_80px_rgba(15,23,42,0.12)] backdrop-blur md:p-10">
-          <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="space-y-6">
-              <div className="inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
-                GPX Analyzer
-              </div>
-
-              <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
-                <InfoCard label="Read mode" value="client-side" />
-                <InfoCard label="Main track" value="selected" />
-                <InfoCard label="Segments" value="merged" />
-              </div>
+          <div className="space-y-6">
+            <div className="inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
+              GPX Analyzer
             </div>
 
             <button
@@ -171,7 +129,7 @@ export default function Home() {
               }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={onDrop}
-              className={`group relative flex min-h-[320px] flex-col items-start justify-between rounded-[28px] border p-6 text-left transition ${
+              className={`group w-full relative flex space-y-4 flex-col items-start justify-between rounded-[28px] border p-6 text-left transition ${
                 isDragging
                   ? "border-sky-500 bg-sky-50 shadow-[0_20px_50px_rgba(14,165,233,0.18)]"
                   : "border-slate-200 bg-slate-950 text-white shadow-[0_24px_60px_rgba(15,23,42,0.24)]"
@@ -220,50 +178,22 @@ export default function Home() {
           </div>
         </section>
 
-        <AppStateBanner state={appState} />
-
         <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
           <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Loaded route
-              </p>
               <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
                 {activeRoute?.name ??
                   loadedRoute?.fileName ??
                   "Waiting for import"}
               </h2>
             </div>
-            <div className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
-              {loadedRoute ? "Ready" : "Idle"}
-            </div>
           </div>
 
           {activeRoute ? (
             <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <MetricCard
-                label="Main track"
-                value={`#${activeRoute.sourceTrackIndex + 1}`}
-              />
-              <MetricCard
-                label="Tracks"
-                value={activeRoute.trackCount.toLocaleString()}
-              />
-              <MetricCard
-                label="Segments"
-                value={activeRoute.segmentCount.toLocaleString()}
-              />
-              <MetricCard
-                label="Track points"
-                value={activeRoute.points.length.toLocaleString()}
-              />
-              <MetricCard
                 label="Distance"
                 value={formatDistance(activeRoute.totalDistanceMeters)}
-              />
-              <MetricCard
-                label="Elevation samples"
-                value={activeRoute.elevationPointCount.toLocaleString()}
               />
               <MetricCard
                 label="Total ascent"
@@ -272,10 +202,6 @@ export default function Home() {
               <MetricCard
                 label="Total descent"
                 value={formatElevation(activeRoute.totalDescentMeters)}
-              />
-              <MetricCard
-                label="Ignored points"
-                value={activeRoute.ignoredPointCount.toLocaleString()}
               />
             </div>
           ) : (
@@ -291,15 +217,9 @@ export default function Home() {
           <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
             <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  Target time
-                </p>
                 <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-                  Define your total goal
+                  Define your target time
                 </h2>
-              </div>
-              <div className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
-                {targetTime.status === "valid" ? "Ready" : "Waiting"}
               </div>
             </div>
 
@@ -326,7 +246,8 @@ export default function Home() {
 
             {targetTime.status === "empty" ? (
               <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                Enter a target time to unlock pace, summary, and split calculations.
+                Enter a target time to unlock pace, summary, and split
+                calculations.
               </div>
             ) : targetTime.status === "invalid" ? (
               <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
@@ -334,16 +255,13 @@ export default function Home() {
               </div>
             ) : (
               <p className="mt-4 text-sm leading-6 text-slate-600">
-                Enter `hours`, `minutes`, and `seconds`. Minutes and seconds must
-                stay between `00` and `59`.
+                Enter `hours`, `minutes`, and `seconds`. Minutes and seconds
+                must stay between `00` and `59`.
               </p>
             )}
           </div>
 
-          <TargetTimeSummary
-            route={activeRoute}
-            targetTime={targetTime}
-          />
+          <TargetTimeSummary route={activeRoute} targetTime={targetTime} />
         </section>
 
         <SplitMarkersSection
@@ -355,83 +273,33 @@ export default function Home() {
         <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
           <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Route visualization
-              </p>
               <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
                 {activeRoute?.name ??
                   loadedRoute?.fileName ??
                   "Map and profile"}
               </h2>
             </div>
-            <div className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
-              {loadedRoute ? "Auto-fit enabled" : "Awaiting import"}
-            </div>
           </div>
 
           {activeRoute && loadedRoute ? (
             <>
-              <RouteMap key={loadedRoute.importId} route={activeRoute} embedded />
+              <RouteMap
+                key={loadedRoute.importId}
+                route={activeRoute}
+                embedded
+              />
               <div className="overflow-hidden rounded-b-[28px] border-t border-slate-100 bg-[linear-gradient(180deg,#0f172a_0%,#172554_100%)]">
                 <ElevationProfilePanel route={activeRoute} embedded />
               </div>
             </>
           ) : (
-            <div className="flex h-[620px] items-center justify-center bg-slate-50 px-6 text-sm text-slate-500">
+            <div className="flex h-155 items-center justify-center bg-slate-50 px-6 text-sm text-slate-500">
               Import a GPX file to display the route map and elevation profile.
             </div>
           )}
         </section>
       </div>
     </main>
-  );
-}
-
-function InfoCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-        {label}
-      </p>
-      <p className="mt-2 text-base font-semibold text-slate-950">{value}</p>
-    </div>
-  );
-}
-
-function AppStateBanner({
-  state,
-}: {
-  state: {
-    badge: string;
-    label: string;
-    message: string;
-    tone: "empty" | "loading" | "error" | "ready";
-  };
-}) {
-  return (
-    <section
-      className={`rounded-[28px] border px-6 py-5 shadow-[0_18px_40px_rgba(15,23,42,0.08)] ${
-        state.tone === "empty"
-          ? "border-slate-200 bg-white text-slate-900"
-          : state.tone === "loading"
-            ? "border-sky-200 bg-sky-50 text-sky-950"
-            : state.tone === "error"
-              ? "border-rose-200 bg-rose-50 text-rose-900"
-              : "border-emerald-200 bg-emerald-50 text-emerald-950"
-      }`}
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.22em]">
-            {state.label}
-          </p>
-          <p className="mt-2 text-base">{state.message}</p>
-        </div>
-        <div className="rounded-full bg-white/70 px-3 py-1 text-sm font-medium">
-          {state.badge}
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -495,9 +363,6 @@ function ElevationProfilePanel({
   route: ParsedGpxRoute | null;
   embedded?: boolean;
 }) {
-  const startPoint = route?.points[0] ?? null;
-  const endPoint = route?.points[route.points.length - 1] ?? null;
-
   return (
     <div
       className={
@@ -513,23 +378,6 @@ function ElevationProfilePanel({
       {route ? (
         <div className="mt-5 space-y-5 text-sm leading-6 text-slate-200">
           <ProfileChart route={route} fullBleed={embedded} />
-          <DetailRow
-            label="Segment lengths"
-            value={route.segments
-              .map(
-                (segment) =>
-                  `#${segment.index + 1}: ${segment.points.length} pts / ${formatDistance(segment.totalDistanceMeters)}`,
-              )
-              .join(" | ")}
-          />
-          <DetailRow
-            label="Start coordinate"
-            value={startPoint ? formatCoordinate(startPoint) : "Unavailable"}
-          />
-          <DetailRow
-            label="End coordinate"
-            value={endPoint ? formatCoordinate(endPoint) : "Unavailable"}
-          />
         </div>
       ) : (
         <p className="mt-5 text-sm leading-6 text-slate-300">
@@ -539,21 +387,6 @@ function ElevationProfilePanel({
       )}
     </div>
   );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-200">
-        {label}
-      </p>
-      <p className="mt-2 text-sm leading-6 text-white">{value}</p>
-    </div>
-  );
-}
-
-function formatCoordinate(point: ParsedGpxRoute["points"][number]): string {
-  return `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
 }
 
 function TargetTimeSummary({
@@ -566,11 +399,12 @@ function TargetTimeSummary({
   const hasRoute = route !== null;
   const pacePerKmSeconds =
     hasRoute && targetTime.status === "valid"
-      ? targetTime.totalSeconds / Math.max(route.totalDistanceMeters / 1000, 0.001)
+      ? targetTime.totalSeconds /
+        Math.max(route.totalDistanceMeters / 1000, 0.001)
       : null;
   const averageSpeedKmh =
     hasRoute && targetTime.status === "valid"
-      ? (route.totalDistanceMeters / 1000) / (targetTime.totalSeconds / 3600)
+      ? route.totalDistanceMeters / 1000 / (targetTime.totalSeconds / 3600)
       : null;
 
   return (
@@ -584,17 +418,12 @@ function TargetTimeSummary({
             Route and goal summary
           </h2>
         </div>
-        <div className="rounded-full bg-white/10 px-3 py-1 text-sm text-slate-200">
-          {targetTime.status === "valid" ? "Live" : "Incomplete"}
-        </div>
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <DarkMetricCard
           label="Total distance"
-          value={
-            hasRoute ? formatDistance(route.totalDistanceMeters) : "-- km"
-          }
+          value={hasRoute ? formatDistance(route.totalDistanceMeters) : "-- km"}
         />
         <DarkMetricCard
           label="Target time"
@@ -606,38 +435,24 @@ function TargetTimeSummary({
         />
         <DarkMetricCard
           label="Average pace"
-          value={pacePerKmSeconds !== null ? formatPace(pacePerKmSeconds) : "-- /km"}
-        />
-        <DarkMetricCard
-          label="Estimated finish"
           value={
-            targetTime.status === "valid"
-              ? formatDuration(targetTime.totalSeconds)
-              : "--:--:--"
+            pacePerKmSeconds !== null ? formatPace(pacePerKmSeconds) : "-- /km"
           }
         />
-      </div>
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <DarkMetricCard
           label="Average speed"
           value={
-            averageSpeedKmh !== null ? `${averageSpeedKmh.toFixed(2)} km/h` : "-- km/h"
-          }
-        />
-        <DarkMetricCard
-          label="Usable seconds"
-          value={
-            targetTime.status === "valid"
-              ? targetTime.totalSeconds.toLocaleString()
-              : "0"
+            averageSpeedKmh !== null
+              ? `${averageSpeedKmh.toFixed(2)} km/h`
+              : "-- km/h"
           }
         />
       </div>
 
       {!hasRoute ? (
         <p className="mt-4 text-sm leading-6 text-slate-300">
-          Import a route to convert the target time into route-based calculations.
+          Import a route to convert the target time into route-based
+          calculations.
         </p>
       ) : targetTime.status === "empty" ? (
         <p className="mt-4 text-sm leading-6 text-slate-300">
@@ -646,8 +461,8 @@ function TargetTimeSummary({
         </p>
       ) : targetTime.status !== "valid" ? (
         <p className="mt-4 text-sm leading-6 text-slate-300">
-          Enter a valid target time to calculate the theoretical average pace and
-          keep the summary indicators in sync.
+          Enter a valid target time to calculate the theoretical average pace
+          and keep the summary indicators in sync.
         </p>
       ) : null}
     </div>
@@ -687,9 +502,6 @@ function SplitMarkersSection({
             Intermediate split times
           </h2>
         </div>
-        <div className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
-          {splitMarkers.length > 0 ? `${splitMarkers.length} markers` : "Not ready"}
-        </div>
       </div>
 
       {!route ? (
@@ -698,7 +510,8 @@ function SplitMarkersSection({
         </p>
       ) : targetTime.status === "empty" ? (
         <p className="mt-6 text-sm leading-6 text-slate-600">
-          Enter a target time to calculate split times for each kilometer marker.
+          Enter a target time to calculate split times for each kilometer
+          marker.
         </p>
       ) : targetTime.status !== "valid" ? (
         <p className="mt-6 text-sm leading-6 text-slate-600">
@@ -715,8 +528,8 @@ function SplitMarkersSection({
             <MetricCard
               label="Final distance"
               value={formatDistance(
-                splitMarkers[splitMarkers.length - 1]?.cumulativeDistanceMeters ??
-                  route.totalDistanceMeters,
+                splitMarkers[splitMarkers.length - 1]
+                  ?.cumulativeDistanceMeters ?? route.totalDistanceMeters,
               )}
             />
             <MetricCard
@@ -743,12 +556,17 @@ function SplitMarkersSection({
                   </span>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-700">
-                  <MobileStat label="Time" value={formatDuration(marker.estimatedTimeSeconds)} />
-                  <MobileStat label="Gain" value={formatElevation(marker.elevationGainMeters)} />
-                  <MobileStat label="Loss" value={formatElevation(marker.elevationLossMeters)} />
                   <MobileStat
-                    label="Coord"
-                    value={`${marker.latitude.toFixed(4)}, ${marker.longitude.toFixed(4)}`}
+                    label="Time"
+                    value={formatDuration(marker.estimatedTimeSeconds)}
+                  />
+                  <MobileStat
+                    label="Gain"
+                    value={formatElevation(marker.elevationGainMeters)}
+                  />
+                  <MobileStat
+                    label="Loss"
+                    value={formatElevation(marker.elevationLossMeters)}
                   />
                 </div>
               </div>
@@ -757,30 +575,30 @@ function SplitMarkersSection({
 
           <div className="mt-6 hidden overflow-hidden rounded-3xl border border-slate-200 lg:block">
             <div className="overflow-x-auto">
-              <div className="min-w-[860px]">
-                <div className="grid grid-cols-[110px_1fr_130px_110px_110px_150px] gap-4 bg-slate-50 px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <div className="min-w-215">
+                <div className="grid grid-cols-5 gap-4 bg-slate-50 px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                   <span>Marker</span>
                   <span>Distance</span>
                   <span>Estimated time</span>
                   <span>Gain</span>
                   <span>Loss</span>
-                  <span>Coordinate</span>
                 </div>
 
                 <div className="divide-y divide-slate-100">
                   {splitMarkers.map((marker) => (
                     <div
                       key={`${marker.kind}-${marker.label}-${marker.cumulativeDistanceMeters}`}
-                      className="grid grid-cols-[110px_1fr_130px_110px_110px_150px] gap-4 px-5 py-4 text-sm text-slate-700"
+                      className="grid grid-cols-5 gap-4 px-5 py-4 text-sm text-slate-700"
                     >
-                      <span className="font-semibold text-slate-950">{marker.label}</span>
-                      <span>{formatDistance(marker.cumulativeDistanceMeters)}</span>
+                      <span className="font-semibold text-slate-950">
+                        {marker.label}
+                      </span>
+                      <span>
+                        {formatDistance(marker.cumulativeDistanceMeters)}
+                      </span>
                       <span>{formatDuration(marker.estimatedTimeSeconds)}</span>
                       <span>{formatElevation(marker.elevationGainMeters)}</span>
                       <span>{formatElevation(marker.elevationLossMeters)}</span>
-                      <span className="truncate text-slate-500">
-                        {marker.latitude.toFixed(4)}, {marker.longitude.toFixed(4)}
-                      </span>
                     </div>
                   ))}
                 </div>
@@ -924,7 +742,11 @@ function parseTargetTimeInput(input: TargetTimeInput): ParsedTargetTime {
   const minutes = input.minutes === "" ? 0 : Number.parseInt(input.minutes, 10);
   const seconds = input.seconds === "" ? 0 : Number.parseInt(input.seconds, 10);
 
-  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || !Number.isInteger(seconds)) {
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    !Number.isInteger(seconds)
+  ) {
     return {
       status: "invalid",
       errorMessage: "Only numeric values are allowed for the target time.",
@@ -955,7 +777,6 @@ function parseTargetTimeInput(input: TargetTimeInput): ParsedTargetTime {
     errorMessage: null,
     totalSeconds,
   };
-
 }
 
 function formatDuration(totalSeconds: number): string {
