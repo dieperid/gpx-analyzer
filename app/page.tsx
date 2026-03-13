@@ -179,41 +179,6 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
-          <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-                {activeRoute?.name ??
-                  loadedRoute?.fileName ??
-                  "Waiting for import"}
-              </h2>
-            </div>
-          </div>
-
-          {activeRoute ? (
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <MetricCard
-                label="Distance"
-                value={formatDistance(activeRoute.totalDistanceMeters)}
-              />
-              <MetricCard
-                label="Total ascent"
-                value={formatElevation(activeRoute.totalAscentMeters)}
-              />
-              <MetricCard
-                label="Total descent"
-                value={formatElevation(activeRoute.totalDescentMeters)}
-              />
-            </div>
-          ) : (
-            <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm leading-6 text-slate-600">
-              Import a file to confirm that the GPX content is read correctly.
-              Once parsed, the extracted tracks, segments, points, and total
-              distance will appear here automatically.
-            </div>
-          )}
-        </section>
-
         <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
             <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -275,32 +240,106 @@ export default function Home() {
           <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-                {activeRoute?.name ??
-                  loadedRoute?.fileName ??
-                  "Map and profile"}
+                {activeRoute?.name ?? loadedRoute?.fileName ?? "Route map"}
               </h2>
             </div>
           </div>
 
           {activeRoute && loadedRoute ? (
-            <>
-              <RouteMap
-                key={loadedRoute.importId}
-                route={activeRoute}
-                embedded
-              />
-              <div className="overflow-hidden rounded-b-[28px] border-t border-slate-100 bg-[linear-gradient(180deg,#0f172a_0%,#172554_100%)]">
-                <ElevationProfilePanel route={activeRoute} embedded />
-              </div>
-            </>
+            <RouteMap
+              key={loadedRoute.importId}
+              route={activeRoute}
+              embedded
+            />
           ) : (
-            <div className="flex h-155 items-center justify-center bg-slate-50 px-6 text-sm text-slate-500">
-              Import a GPX file to display the route map and elevation profile.
+            <div className="flex h-105 items-center justify-center bg-slate-50 px-6 text-sm text-slate-500">
+              Import a GPX file to display the route map.
             </div>
           )}
         </section>
+
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
+          <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+                {activeRoute?.name ??
+                  loadedRoute?.fileName ??
+                  "Elevation profile and overview"}
+              </h2>
+            </div>
+          </div>
+
+          <ElevationProfilePanel route={activeRoute} embedded />
+
+          <div className="border-t border-slate-100 px-6 py-6">
+            <RouteOverviewSection route={activeRoute} fileName={loadedRoute?.fileName ?? null} embedded />
+          </div>
+        </section>
       </div>
     </main>
+  );
+}
+
+function RouteOverviewSection({
+  route,
+  fileName,
+  embedded = false,
+}: {
+  route: ParsedGpxRoute | null;
+  fileName: string | null;
+  embedded?: boolean;
+}) {
+  return (
+    <section
+      className={
+        embedded
+          ? ""
+          : "rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.08)]"
+      }
+    >
+      {embedded ? null : (
+        <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+              {route?.name ?? fileName ?? "Waiting for import"}
+            </h2>
+          </div>
+        </div>
+      )}
+
+      {route ? (
+        <div className={`${embedded ? "" : "mt-6"} grid gap-4 md:grid-cols-2 xl:grid-cols-5`}>
+          <MetricCard
+            label="Distance"
+            value={formatDistance(route.totalDistanceMeters)}
+          />
+          <MetricCard
+            label="Total ascent"
+            value={formatElevation(route.totalAscentMeters)}
+          />
+          <MetricCard
+            label="Total descent"
+            value={formatElevation(route.totalDescentMeters)}
+          />
+          <MetricCard
+            label="D+ / km"
+            value={formatAscentRatioPerKm(route)}
+          />
+          <MetricCard
+            label="Weighted avg slope"
+            value={formatWeightedAverageSlope(route)}
+          />
+        </div>
+      ) : (
+        <div
+          className={`${embedded ? "" : "mt-6"} rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm leading-6 text-slate-600`}
+        >
+          Import a file to confirm that the GPX content is read correctly. Once
+          parsed, the extracted tracks, segments, points, and total distance
+          will appear here automatically.
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -357,6 +396,53 @@ function formatElevation(elevationMeters: number | null): string {
   return `${Math.round(elevationMeters)} m`;
 }
 
+function formatAscentRatioPerKm(route: ParsedGpxRoute): string {
+  if (
+    route.totalAscentMeters === null ||
+    !Number.isFinite(route.totalDistanceMeters) ||
+    route.totalDistanceMeters <= 0
+  ) {
+    return "Unavailable";
+  }
+
+  const metersPerKm = route.totalAscentMeters / (route.totalDistanceMeters / 1000);
+  return `${Math.round(metersPerKm)} m/km`;
+}
+
+function formatWeightedAverageSlope(route: ParsedGpxRoute): string {
+  if (route.elevationProfile.length < 2) {
+    return "Unavailable";
+  }
+
+  let weightedAbsoluteElevationChangeMeters = 0;
+  let totalMeasuredDistanceMeters = 0;
+
+  for (let index = 1; index < route.elevationProfile.length; index += 1) {
+    const previousSample = route.elevationProfile[index - 1];
+    const currentSample = route.elevationProfile[index];
+    const distanceDeltaMeters =
+      currentSample.distanceMeters - previousSample.distanceMeters;
+
+    if (distanceDeltaMeters <= 0) {
+      continue;
+    }
+
+    weightedAbsoluteElevationChangeMeters += Math.abs(
+      currentSample.elevation - previousSample.elevation,
+    );
+    totalMeasuredDistanceMeters += distanceDeltaMeters;
+  }
+
+  if (totalMeasuredDistanceMeters <= 0) {
+    return "Unavailable";
+  }
+
+  const weightedAverageSlopePercent =
+    (weightedAbsoluteElevationChangeMeters / totalMeasuredDistanceMeters) * 100;
+
+  return `${weightedAverageSlopePercent.toFixed(1)}%`;
+}
+
 function ElevationProfilePanel({
   route,
   embedded = false,
@@ -368,20 +454,20 @@ function ElevationProfilePanel({
     <div
       className={
         embedded
-          ? "p-6 text-white"
-          : "rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,#0f172a_0%,#172554_100%)] p-6 text-white shadow-[0_18px_48px_rgba(15,23,42,0.14)]"
+          ? "p-6 text-slate-950"
+          : "rounded-[28px] border border-slate-200 bg-white p-6 text-slate-950 shadow-[0_18px_48px_rgba(15,23,42,0.08)]"
       }
     >
-      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-200">
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
         Elevation profile
       </p>
 
       {route ? (
-        <div className="mt-5 space-y-5 text-sm leading-6 text-slate-200">
+        <div className="mt-5 space-y-5 text-sm leading-6 text-slate-600">
           <ElevationProfileChart route={route} fullBleed={embedded} />
         </div>
       ) : (
-        <p className="mt-5 text-sm leading-6 text-slate-300">
+        <p className="mt-5 text-sm leading-6 text-slate-600">
           After import, the route profile will appear here with chart-ready
           distance/elevation data and ordered track details.
         </p>
