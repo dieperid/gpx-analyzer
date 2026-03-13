@@ -15,10 +15,7 @@ import {
   type ParsedGpxRoute,
 } from "@/lib/gpx";
 import { buildSplitMarkers } from "@/lib/splits";
-import {
-  parseTargetTimeInput,
-  type TargetTimeInput,
-} from "@/lib/target-time";
+import { parseTargetTimeInput, type TargetTimeInput } from "@/lib/target-time";
 
 type LoadedRoute = {
   fileName: string;

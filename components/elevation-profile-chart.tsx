@@ -50,13 +50,6 @@ export default function ElevationProfileChart({
         fullBleed ? "rounded-2xl border-y px-0 py-4" : "rounded-2xl border p-4"
       }`}
     >
-      <div className={`mb-4 flex flex-col gap-3 ${fullBleed ? "px-6" : ""}`}>
-        <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-          <span>Profile</span>
-          <span>{route.elevationPointCount} samples</span>
-        </div>
-      </div>
-
       <div
         className={`h-56 w-full ${fullBleed ? "pr-3" : ""}`}
         role="img"
@@ -131,18 +124,6 @@ export default function ElevationProfileChart({
           </LineChart>
         </ResponsiveContainer>
       </div>
-
-      <div
-        className={`mt-3 flex items-center justify-between text-xs ${
-          fullBleed ? "px-6" : ""
-        }`}
-      >
-        <span className="text-slate-500">{formatElevationLabel(yAxisMax)}</span>
-        <span className="text-slate-500">
-          {formatDistanceLabel(route.totalDistanceMeters / 1000)}
-        </span>
-        <span className="text-slate-500">{formatElevationLabel(0)}</span>
-      </div>
     </div>
   );
 }
@@ -178,7 +159,8 @@ function ProfileTooltip({
             {formatDistanceMetersLabel(activeSegment.endDistanceKm * 1000)}
           </p>
           <p className="mt-1 text-slate-300">
-            Distance: {formatDistanceMetersLabel(activeSegment.distanceKm * 1000)}
+            Distance:{" "}
+            {formatDistanceMetersLabel(activeSegment.distanceKm * 1000)}
           </p>
           <p className="mt-1 text-slate-300">
             Average grade: {formatGradeLabel(activeSegment.averageGradePercent)}
