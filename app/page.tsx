@@ -41,6 +41,40 @@ export default function Home() {
     activeRoute !== null && targetTime.status === "valid"
       ? buildSplitMarkers(activeRoute, targetTime.totalSeconds)
       : [];
+  const appState: {
+    badge: string;
+    label: string;
+    message: string;
+    tone: "empty" | "loading" | "error" | "ready";
+  } = isLoading
+    ? {
+        badge: "Processing",
+        label: "Loading route",
+        message:
+          "The GPX file is being parsed and all views will update automatically.",
+        tone: "loading",
+      }
+    : errorMessage
+      ? {
+          badge: "Error",
+          label: "Import problem",
+          message: errorMessage,
+          tone: "error",
+        }
+      : loadedRoute
+        ? {
+            badge: "Ready",
+            label: "Route loaded",
+            message: `${loadedRoute.fileName} is active across the map, profile, summary, and split table.`,
+            tone: "ready",
+          }
+        : {
+            badge: "Empty",
+            label: "Waiting for route",
+            message:
+              "Import a GPX file to unlock the route analysis, target time, map, profile, and split views.",
+            tone: "empty",
+          };
 
   async function handleFileSelection(file: File | null) {
     if (!file) {
@@ -186,17 +220,10 @@ export default function Home() {
           </div>
         </section>
 
-        {errorMessage ? (
-          <section className="rounded-[28px] border border-rose-200 bg-rose-50 px-6 py-5 text-rose-900 shadow-[0_18px_40px_rgba(244,63,94,0.08)]">
-            <p className="text-sm font-semibold uppercase tracking-[0.22em]">
-              Import error
-            </p>
-            <p className="mt-2 text-base">{errorMessage}</p>
-          </section>
-        ) : null}
+        <AppStateBanner state={appState} />
 
         <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
-          <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
                 Loaded route
@@ -262,7 +289,7 @@ export default function Home() {
 
         <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
-            <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
                   Target time
@@ -326,7 +353,7 @@ export default function Home() {
         />
 
         <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
-          <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-6 py-4">
+          <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
                 Route visualization
@@ -368,6 +395,43 @@ function InfoCard({ label, value }: { label: string; value: string }) {
       </p>
       <p className="mt-2 text-base font-semibold text-slate-950">{value}</p>
     </div>
+  );
+}
+
+function AppStateBanner({
+  state,
+}: {
+  state: {
+    badge: string;
+    label: string;
+    message: string;
+    tone: "empty" | "loading" | "error" | "ready";
+  };
+}) {
+  return (
+    <section
+      className={`rounded-[28px] border px-6 py-5 shadow-[0_18px_40px_rgba(15,23,42,0.08)] ${
+        state.tone === "empty"
+          ? "border-slate-200 bg-white text-slate-900"
+          : state.tone === "loading"
+            ? "border-sky-200 bg-sky-50 text-sky-950"
+            : state.tone === "error"
+              ? "border-rose-200 bg-rose-50 text-rose-900"
+              : "border-emerald-200 bg-emerald-50 text-emerald-950"
+      }`}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.22em]">
+            {state.label}
+          </p>
+          <p className="mt-2 text-base">{state.message}</p>
+        </div>
+        <div className="rounded-full bg-white/70 px-3 py-1 text-sm font-medium">
+          {state.badge}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -511,7 +575,7 @@ function TargetTimeSummary({
 
   return (
     <div className="rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,#0f172a_0%,#172554_100%)] p-6 text-white shadow-[0_18px_48px_rgba(15,23,42,0.14)]">
-      <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
+      <div className="flex flex-col gap-4 border-b border-white/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-200">
             Global indicators
@@ -614,7 +678,7 @@ function SplitMarkersSection({
 }) {
   return (
     <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
-      <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
+      <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
             Split markers
@@ -664,37 +728,79 @@ function SplitMarkersSection({
             />
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-3xl border border-slate-200">
-            <div className="grid grid-cols-[110px_1fr_130px_110px_110px_150px] gap-4 bg-slate-50 px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              <span>Marker</span>
-              <span>Distance</span>
-              <span>Estimated time</span>
-              <span>Gain</span>
-              <span>Loss</span>
-              <span>Coordinate</span>
-            </div>
-
-            <div className="divide-y divide-slate-100">
-              {splitMarkers.map((marker) => (
-                <div
-                  key={`${marker.kind}-${marker.label}-${marker.cumulativeDistanceMeters}`}
-                  className="grid grid-cols-[110px_1fr_130px_110px_110px_150px] gap-4 px-5 py-4 text-sm text-slate-700"
-                >
-                  <span className="font-semibold text-slate-950">{marker.label}</span>
-                  <span>{formatDistance(marker.cumulativeDistanceMeters)}</span>
-                  <span>{formatDuration(marker.estimatedTimeSeconds)}</span>
-                  <span>{formatElevation(marker.elevationGainMeters)}</span>
-                  <span>{formatElevation(marker.elevationLossMeters)}</span>
-                  <span className="truncate text-slate-500">
-                    {marker.latitude.toFixed(4)}, {marker.longitude.toFixed(4)}
+          <div className="mt-6 space-y-4 lg:hidden">
+            {splitMarkers.map((marker) => (
+              <div
+                key={`${marker.kind}-${marker.label}-${marker.cumulativeDistanceMeters}`}
+                className="rounded-3xl border border-slate-200 bg-slate-50 p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-base font-semibold text-slate-950">
+                    {marker.label}
+                  </span>
+                  <span className="text-sm text-slate-500">
+                    {formatDistance(marker.cumulativeDistanceMeters)}
                   </span>
                 </div>
-              ))}
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-700">
+                  <MobileStat label="Time" value={formatDuration(marker.estimatedTimeSeconds)} />
+                  <MobileStat label="Gain" value={formatElevation(marker.elevationGainMeters)} />
+                  <MobileStat label="Loss" value={formatElevation(marker.elevationLossMeters)} />
+                  <MobileStat
+                    label="Coord"
+                    value={`${marker.latitude.toFixed(4)}, ${marker.longitude.toFixed(4)}`}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 hidden overflow-hidden rounded-3xl border border-slate-200 lg:block">
+            <div className="overflow-x-auto">
+              <div className="min-w-[860px]">
+                <div className="grid grid-cols-[110px_1fr_130px_110px_110px_150px] gap-4 bg-slate-50 px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <span>Marker</span>
+                  <span>Distance</span>
+                  <span>Estimated time</span>
+                  <span>Gain</span>
+                  <span>Loss</span>
+                  <span>Coordinate</span>
+                </div>
+
+                <div className="divide-y divide-slate-100">
+                  {splitMarkers.map((marker) => (
+                    <div
+                      key={`${marker.kind}-${marker.label}-${marker.cumulativeDistanceMeters}`}
+                      className="grid grid-cols-[110px_1fr_130px_110px_110px_150px] gap-4 px-5 py-4 text-sm text-slate-700"
+                    >
+                      <span className="font-semibold text-slate-950">{marker.label}</span>
+                      <span>{formatDistance(marker.cumulativeDistanceMeters)}</span>
+                      <span>{formatDuration(marker.estimatedTimeSeconds)}</span>
+                      <span>{formatElevation(marker.elevationGainMeters)}</span>
+                      <span>{formatElevation(marker.elevationLossMeters)}</span>
+                      <span className="truncate text-slate-500">
+                        {marker.latitude.toFixed(4)}, {marker.longitude.toFixed(4)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </>
       )}
     </section>
+  );
+}
+
+function MobileStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/0 bg-white px-3 py-2">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-sm text-slate-900">{value}</p>
+    </div>
   );
 }
 
@@ -849,6 +955,7 @@ function parseTargetTimeInput(input: TargetTimeInput): ParsedTargetTime {
     errorMessage: null,
     totalSeconds,
   };
+
 }
 
 function formatDuration(totalSeconds: number): string {

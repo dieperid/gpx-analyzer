@@ -58,7 +58,7 @@ export default function RouteMapClient({
           </div>
         </div>
       )}
-      <div className="h-[420px] w-full">
+      <div className="h-[320px] w-full sm:h-[420px]">
         <MapContainer
           center={startPosition}
           zoom={13}
