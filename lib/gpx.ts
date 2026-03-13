@@ -49,14 +49,27 @@ export class EmptyGpxError extends Error {
 }
 
 export class InvalidGpxError extends Error {
-  constructor(message = "The selected file is not a valid GPX document.") {
+  constructor(
+    message = "The selected file is invalid. Please import a valid GPX document.",
+  ) {
     super(message);
     this.name = "InvalidGpxError";
   }
 }
 
+export class NoTrackDetectedError extends Error {
+  constructor(
+    message = "No track was detected in this GPX file. Please import a file containing a route track.",
+  ) {
+    super(message);
+    this.name = "NoTrackDetectedError";
+  }
+}
+
 export class NoUsableTrackError extends Error {
-  constructor(message = "No usable track was found in this GPX file.") {
+  constructor(
+    message = "A track was found, but it cannot be used because it does not contain enough valid points.",
+  ) {
     super(message);
     this.name = "NoUsableTrackError";
   }
@@ -81,7 +94,7 @@ export function parseGpx(xmlContent: string): ParsedGpxRoute {
 
   const trackNodes = getChildrenByName(root, "trk");
   if (trackNodes.length === 0) {
-    throw new EmptyGpxError("This GPX file does not contain any track data.");
+    throw new NoTrackDetectedError();
   }
 
   const tracks = trackNodes.map((trackNode, index) => parseTrack(trackNode, index));
@@ -91,7 +104,9 @@ export function parseGpx(xmlContent: string): ParsedGpxRoute {
   );
 
   if (totalRawPointCount === 0) {
-    throw new EmptyGpxError("This GPX file does not contain any track points.");
+    throw new NoTrackDetectedError(
+      "No track points were detected in this GPX file. Please import a file containing a route track.",
+    );
   }
 
   const mainTrack = selectMainTrack(tracks);

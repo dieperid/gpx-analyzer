@@ -5,6 +5,7 @@ import RouteMap from "@/components/route-map";
 import {
   EmptyGpxError,
   InvalidGpxError,
+  NoTrackDetectedError,
   NoUsableTrackError,
   parseGpx,
   type ParsedGpxRoute,
@@ -13,6 +14,7 @@ import { buildSplitMarkers } from "@/lib/splits";
 
 type LoadedRoute = {
   fileName: string;
+  importId: string;
   route: ParsedGpxRoute;
 };
 
@@ -33,10 +35,11 @@ export default function Home() {
     minutes: "",
     seconds: "",
   });
+  const activeRoute = loadedRoute?.route ?? null;
   const targetTime = parseTargetTimeInput(targetTimeInput);
   const splitMarkers =
-    loadedRoute !== null && targetTime.status === "valid"
-      ? buildSplitMarkers(loadedRoute.route, targetTime.totalSeconds)
+    activeRoute !== null && targetTime.status === "valid"
+      ? buildSplitMarkers(activeRoute, targetTime.totalSeconds)
       : [];
 
   async function handleFileSelection(file: File | null) {
@@ -51,6 +54,7 @@ export default function Home() {
     }
 
     setLoadedRoute(null);
+    setIsDragging(false);
     setIsLoading(true);
     setErrorMessage(null);
 
@@ -60,12 +64,14 @@ export default function Home() {
 
       setLoadedRoute({
         fileName: file.name,
+        importId: crypto.randomUUID(),
         route,
       });
     } catch (error) {
       if (
         error instanceof EmptyGpxError ||
         error instanceof InvalidGpxError ||
+        error instanceof NoTrackDetectedError ||
         error instanceof NoUsableTrackError
       ) {
         setErrorMessage(error.message);
@@ -196,7 +202,7 @@ export default function Home() {
                 Loaded route
               </p>
               <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-                {loadedRoute?.route.name ??
+                {activeRoute?.name ??
                   loadedRoute?.fileName ??
                   "Waiting for import"}
               </h2>
@@ -206,43 +212,43 @@ export default function Home() {
             </div>
           </div>
 
-          {loadedRoute ? (
+          {activeRoute ? (
             <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <MetricCard
                 label="Main track"
-                value={`#${loadedRoute.route.sourceTrackIndex + 1}`}
+                value={`#${activeRoute.sourceTrackIndex + 1}`}
               />
               <MetricCard
                 label="Tracks"
-                value={loadedRoute.route.trackCount.toLocaleString()}
+                value={activeRoute.trackCount.toLocaleString()}
               />
               <MetricCard
                 label="Segments"
-                value={loadedRoute.route.segmentCount.toLocaleString()}
+                value={activeRoute.segmentCount.toLocaleString()}
               />
               <MetricCard
                 label="Track points"
-                value={loadedRoute.route.points.length.toLocaleString()}
+                value={activeRoute.points.length.toLocaleString()}
               />
               <MetricCard
                 label="Distance"
-                value={formatDistance(loadedRoute.route.totalDistanceMeters)}
+                value={formatDistance(activeRoute.totalDistanceMeters)}
               />
               <MetricCard
                 label="Elevation samples"
-                value={loadedRoute.route.elevationPointCount.toLocaleString()}
+                value={activeRoute.elevationPointCount.toLocaleString()}
               />
               <MetricCard
                 label="Total ascent"
-                value={formatElevation(loadedRoute.route.totalAscentMeters)}
+                value={formatElevation(activeRoute.totalAscentMeters)}
               />
               <MetricCard
                 label="Total descent"
-                value={formatElevation(loadedRoute.route.totalDescentMeters)}
+                value={formatElevation(activeRoute.totalDescentMeters)}
               />
               <MetricCard
                 label="Ignored points"
-                value={loadedRoute.route.ignoredPointCount.toLocaleString()}
+                value={activeRoute.ignoredPointCount.toLocaleString()}
               />
             </div>
           ) : (
@@ -291,7 +297,11 @@ export default function Home() {
               />
             </div>
 
-            {targetTime.status === "invalid" ? (
+            {targetTime.status === "empty" ? (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Enter a target time to unlock pace, summary, and split calculations.
+              </div>
+            ) : targetTime.status === "invalid" ? (
               <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
                 {targetTime.errorMessage}
               </div>
@@ -304,13 +314,13 @@ export default function Home() {
           </div>
 
           <TargetTimeSummary
-            route={loadedRoute?.route ?? null}
+            route={activeRoute}
             targetTime={targetTime}
           />
         </section>
 
         <SplitMarkersSection
-          route={loadedRoute?.route ?? null}
+          route={activeRoute}
           targetTime={targetTime}
           splitMarkers={splitMarkers}
         />
@@ -322,7 +332,7 @@ export default function Home() {
                 Route visualization
               </p>
               <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-                {loadedRoute?.route.name ??
+                {activeRoute?.name ??
                   loadedRoute?.fileName ??
                   "Map and profile"}
               </h2>
@@ -332,11 +342,11 @@ export default function Home() {
             </div>
           </div>
 
-          {loadedRoute ? (
+          {activeRoute && loadedRoute ? (
             <>
-              <RouteMap route={loadedRoute.route} embedded />
+              <RouteMap key={loadedRoute.importId} route={activeRoute} embedded />
               <div className="overflow-hidden rounded-b-[28px] border-t border-slate-100 bg-[linear-gradient(180deg,#0f172a_0%,#172554_100%)]">
-                <ElevationProfilePanel route={loadedRoute.route} embedded />
+                <ElevationProfilePanel route={activeRoute} embedded />
               </div>
             </>
           ) : (
@@ -565,6 +575,11 @@ function TargetTimeSummary({
         <p className="mt-4 text-sm leading-6 text-slate-300">
           Import a route to convert the target time into route-based calculations.
         </p>
+      ) : targetTime.status === "empty" ? (
+        <p className="mt-4 text-sm leading-6 text-slate-300">
+          A target time is still missing. Enter hours, minutes, and seconds to
+          generate the global indicators.
+        </p>
       ) : targetTime.status !== "valid" ? (
         <p className="mt-4 text-sm leading-6 text-slate-300">
           Enter a valid target time to calculate the theoretical average pace and
@@ -616,6 +631,10 @@ function SplitMarkersSection({
       {!route ? (
         <p className="mt-6 text-sm leading-6 text-slate-600">
           Import a route to generate kilometer markers and the finish marker.
+        </p>
+      ) : targetTime.status === "empty" ? (
+        <p className="mt-6 text-sm leading-6 text-slate-600">
+          Enter a target time to calculate split times for each kilometer marker.
         </p>
       ) : targetTime.status !== "valid" ? (
         <p className="mt-6 text-sm leading-6 text-slate-600">
@@ -693,7 +712,8 @@ function ProfileChart({
           fullBleed ? "border-y" : "rounded-2xl border"
         }`}
       >
-        Elevation data is missing or too sparse to draw a profile.
+        Elevation data is missing or too sparse to draw a profile. Distance and
+        split calculations remain available.
       </div>
     );
   }
