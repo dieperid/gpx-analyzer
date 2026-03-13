@@ -21,7 +21,7 @@ export default function ProfileOverviewSection({
 
       <ElevationProfilePanel route={route} embedded />
 
-      <div className="border-t border-slate-100 px-6 py-6">
+      <div className="px-6 py-6">
         <RouteOverviewSection route={route} fileName={fileName} embedded />
       </div>
     </section>

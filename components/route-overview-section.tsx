@@ -16,13 +16,7 @@ export default function RouteOverviewSection({
   embedded?: boolean;
 }) {
   return (
-    <section
-      className={
-        embedded
-          ? ""
-          : "rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.08)]"
-      }
-    >
+    <section>
       {embedded ? null : (
         <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -33,7 +27,7 @@ export default function RouteOverviewSection({
         </div>
       )}
 
-      {route ? (
+      {route && (
         <div
           className={`${embedded ? "" : "mt-6"} grid gap-4 md:grid-cols-2 xl:grid-cols-5`}
         >
@@ -54,14 +48,6 @@ export default function RouteOverviewSection({
             label="Weighted avg slope"
             value={formatWeightedAverageSlope(route)}
           />
-        </div>
-      ) : (
-        <div
-          className={`${embedded ? "" : "mt-6"} rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm leading-6 text-slate-600`}
-        >
-          Import a file to confirm that the GPX content is read correctly. Once
-          parsed, the extracted tracks, segments, points, and total distance
-          will appear here automatically.
         </div>
       )}
     </section>

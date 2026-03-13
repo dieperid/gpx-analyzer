@@ -183,6 +183,17 @@ export default function Home() {
           </div>
         </section>
 
+        <RouteMapSection
+          route={activeRoute}
+          fileName={loadedRoute?.fileName ?? null}
+          importId={loadedRoute?.importId ?? null}
+        />
+
+        <ProfileOverviewSection
+          route={activeRoute}
+          fileName={loadedRoute?.fileName ?? null}
+        />
+
         <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <TargetTimeSection
             value={targetTimeInput}
@@ -196,17 +207,6 @@ export default function Home() {
           route={activeRoute}
           targetTime={targetTime}
           splitMarkers={splitMarkers}
-        />
-
-        <RouteMapSection
-          route={activeRoute}
-          fileName={loadedRoute?.fileName ?? null}
-          importId={loadedRoute?.importId ?? null}
-        />
-
-        <ProfileOverviewSection
-          route={activeRoute}
-          fileName={loadedRoute?.fileName ?? null}
         />
       </div>
     </main>
