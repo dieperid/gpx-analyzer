@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, DragEvent, useRef, useState } from "react";
+import ElevationProfileChart from "@/components/elevation-profile-chart";
 import RouteMap from "@/components/route-map";
 import {
   EmptyGpxError,
@@ -377,7 +378,7 @@ function ElevationProfilePanel({
 
       {route ? (
         <div className="mt-5 space-y-5 text-sm leading-6 text-slate-200">
-          <ProfileChart route={route} fullBleed={embedded} />
+          <ElevationProfileChart route={route} fullBleed={embedded} />
         </div>
       ) : (
         <p className="mt-5 text-sm leading-6 text-slate-300">
@@ -618,94 +619,6 @@ function MobileStat({ label, value }: { label: string; value: string }) {
         {label}
       </p>
       <p className="mt-1 text-sm text-slate-900">{value}</p>
-    </div>
-  );
-}
-
-function ProfileChart({
-  route,
-  fullBleed = false,
-}: {
-  route: ParsedGpxRoute;
-  fullBleed?: boolean;
-}) {
-  if (route.elevationProfile.length < 2) {
-    return (
-      <div
-        className={`border-dashed border-white/15 bg-white/5 px-4 py-10 text-center text-slate-300 ${
-          fullBleed ? "border-y" : "rounded-2xl border"
-        }`}
-      >
-        Elevation data is missing or too sparse to draw a profile. Distance and
-        split calculations remain available.
-      </div>
-    );
-  }
-
-  const chartWidth = 640;
-  const chartHeight = 200;
-  const elevations = route.elevationProfile.map((sample) => sample.elevation);
-  const minElevation = Math.min(...elevations);
-  const maxElevation = Math.max(...elevations);
-  const elevationRange = Math.max(maxElevation - minElevation, 1);
-  const profileStartDistance = route.elevationProfile[0].distanceMeters;
-  const profileEndDistance =
-    route.elevationProfile[route.elevationProfile.length - 1].distanceMeters;
-  const distanceRange = Math.max(profileEndDistance - profileStartDistance, 1);
-
-  const points = route.elevationProfile
-    .map((sample) => {
-      const x =
-        ((sample.distanceMeters - profileStartDistance) / distanceRange) *
-        chartWidth;
-      const y =
-        chartHeight -
-        ((sample.elevation - minElevation) / elevationRange) * chartHeight;
-
-      return `${x.toFixed(2)},${y.toFixed(2)}`;
-    })
-    .join(" ");
-
-  return (
-    <div
-      className={`border-white/10 bg-white/5 ${
-        fullBleed ? "border-y py-4 rounded-2xl" : "rounded-2xl border p-4"
-      }`}
-    >
-      <div
-        className={`mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-[0.18em] text-sky-200 ${
-          fullBleed ? "px-6" : ""
-        }`}
-      >
-        <span>Profile</span>
-        <span>{route.elevationPointCount} samples</span>
-      </div>
-
-      <svg
-        viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-        className="h-52 w-full overflow-visible"
-        role="img"
-        aria-label="Elevation profile chart"
-      >
-        <polyline
-          fill="none"
-          stroke="rgba(125, 211, 252, 0.95)"
-          strokeWidth="4"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          points={points}
-        />
-      </svg>
-
-      <div
-        className={`mt-3 flex items-center justify-between text-xs text-slate-300 ${
-          fullBleed ? "px-6" : ""
-        }`}
-      >
-        <span>{formatElevation(maxElevation)}</span>
-        <span>{formatDistance(route.totalDistanceMeters)}</span>
-        <span>{formatElevation(minElevation)}</span>
-      </div>
     </div>
   );
 }
