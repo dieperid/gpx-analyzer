@@ -154,9 +154,8 @@ function ProfileTooltip({
             {terrain.label} segment
           </p>
           <p className="mt-1 text-slate-300">
-            Segment range:{" "}
-            {formatDistanceMetersLabel(activeSegment.startDistanceKm * 1000)} to{" "}
-            {formatDistanceMetersLabel(activeSegment.endDistanceKm * 1000)}
+            Segment range: {activeSegment.startDistanceKm.toFixed(2)} –{" "}
+            {activeSegment.endDistanceKm.toFixed(2)} km
           </p>
           <p className="mt-1 text-slate-300">
             Distance:{" "}
@@ -169,7 +168,7 @@ function ProfileTooltip({
             Max grade: {formatGradeLabel(activeSegment.maxGradePercent)}
           </p>
           <div className="mt-3 grid grid-cols-2 gap-3 border-t border-white/10 pt-3 text-slate-300">
-            <p>Distance: {formatDistanceLabel(sample.distanceKm)}</p>
+            <p>Distance: {sample.distanceKm.toFixed(1)} km</p>
             <p>Elevation: {formatElevationLabel(sample.elevation)}</p>
           </div>
         </>
@@ -182,17 +181,13 @@ function ProfileTooltip({
             Grade: {formatGradeLabel(sample.gradePercent)}
           </p>
           <div className="mt-3 grid grid-cols-2 gap-3 border-t border-white/10 pt-3 text-slate-300">
-            <p>Distance: {formatDistanceLabel(sample.distanceKm)}</p>
+            <p>Distance: {sample.distanceKm.toFixed(2)} km</p>
             <p>Elevation: {formatElevationLabel(sample.elevation)}</p>
           </div>
         </>
       ) : null}
     </div>
   );
-}
-
-function formatDistanceLabel(distanceKm: number): string {
-  return `${distanceKm.toFixed(distanceKm >= 10 ? 0 : 1)} km`;
 }
 
 function formatDistanceTickLabel(distanceKm: number): string {
