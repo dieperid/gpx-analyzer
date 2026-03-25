@@ -1,5 +1,5 @@
 export function formatDistance(distanceMeters: number): string {
-  return `${(distanceMeters / 1000).toFixed(2)} km`;
+  return `${(distanceMeters / 1000).toFixed(1)} km`;
 }
 
 export function formatElevation(elevationMeters: number | null): string {

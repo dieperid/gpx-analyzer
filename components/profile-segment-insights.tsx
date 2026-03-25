@@ -29,20 +29,24 @@ export default function ProfileSegmentInsights({
   const hardestClimb =
     segments
       .filter((segment) => segment.type === "climb")
-      .sort(sortSegmentsByDifficulty)[0] ?? null;
+      .sort(sortHardestClimbSegments)[0] ?? null;
+  const hardestDescent =
+    segments
+      .filter((segment) => segment.type === "descent")
+      .sort(sortHardestDescentSegments)[0] ?? null;
 
   return (
-    <section className="border-t border-slate-100 pt-6">
+    <section className="border-t border-slate-100 pt-2">
       <div className="mt-6 grid gap-5 xl:grid-cols-2">
         <SegmentTableCard
-          title="Top climbs"
+          title="Top 5 climbs"
           description="Ranked by total ascent within each detected climb segment."
           segments={topClimbs}
           emptyMessage="No climb segments were detected from this elevation profile."
           tone="climb"
         />
         <SegmentTableCard
-          title="Top descents"
+          title="Top 5 descents"
           description="Ranked by total descent within each detected downhill segment."
           segments={topDescents}
           emptyMessage="No descent segments were detected from this elevation profile."
@@ -54,7 +58,13 @@ export default function ProfileSegmentInsights({
           segments={hardestClimb ? [hardestClimb] : []}
           emptyMessage="A hardest climb could not be identified for this route."
           tone="climb"
-          className="xl:col-span-2"
+        />
+        <SegmentTableCard
+          title="Hardest descent"
+          description="Picked from the detected descents using the same combined length-and-grade difficulty score."
+          segments={hardestDescent ? [hardestDescent] : []}
+          emptyMessage="A hardest descent could not be identified for this route."
+          tone="descent"
         />
       </div>
     </section>
@@ -78,8 +88,8 @@ function SegmentTableCard({
 }) {
   const toneClasses =
     tone === "climb" ? "border-red-200 bg-red-50" : "border-sky-200 bg-sky-50";
-  const badgeClasses =
-    tone === "climb" ? "bg-red-100 text-red-700" : "bg-sky-100 text-sky-700";
+  const showAscentColumn = tone === "climb";
+  const showDescentColumn = tone === "descent";
 
   return (
     <div
@@ -89,11 +99,6 @@ function SegmentTableCard({
         <div>
           <h4 className="text-lg font-semibold text-slate-950">{title}</h4>
           <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
-        </div>
-        <div
-          className={`inline-flex min-w-10 items-center justify-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${badgeClasses}`}
-        >
-          {segments.length}
         </div>
       </div>
 
@@ -111,12 +116,16 @@ function SegmentTableCard({
                 <th className="border-b border-slate-200/80 px-4 py-3 font-semibold">
                   Segment distance
                 </th>
-                <th className="border-b border-slate-200/80 px-4 py-3 font-semibold">
-                  Total D+
-                </th>
-                <th className="border-b border-slate-200/80 px-4 py-3 font-semibold">
-                  Total D-
-                </th>
+                {showAscentColumn ? (
+                  <th className="border-b border-slate-200/80 px-4 py-3 font-semibold">
+                    Total D+
+                  </th>
+                ) : null}
+                {showDescentColumn ? (
+                  <th className="border-b border-slate-200/80 px-4 py-3 font-semibold">
+                    Total D-
+                  </th>
+                ) : null}
                 <th className="border-b border-slate-200/80 px-4 py-3 font-semibold">
                   Avg %
                 </th>
@@ -135,14 +144,18 @@ function SegmentTableCard({
                     {formatDistance(segment.endDistanceKm * 1000)}
                   </td>
                   <td className="border-b border-slate-200/60 px-4 py-3">
-                    {formatDistance(segment.distanceKm * 1000)}
+                    {formatMeters(segment.distanceKm * 1000)}
                   </td>
-                  <td className="border-b border-slate-200/60 px-4 py-3">
-                    {formatElevation(segment.totalAscentMeters)}
-                  </td>
-                  <td className="border-b border-slate-200/60 px-4 py-3">
-                    {formatElevation(segment.totalDescentMeters)}
-                  </td>
+                  {showAscentColumn ? (
+                    <td className="border-b border-slate-200/60 px-4 py-3">
+                      {formatElevation(segment.totalAscentMeters)}
+                    </td>
+                  ) : null}
+                  {showDescentColumn ? (
+                    <td className="border-b border-slate-200/60 px-4 py-3">
+                      {formatElevation(segment.totalDescentMeters)}
+                    </td>
+                  ) : null}
                   <td className="border-b border-slate-200/60 px-4 py-3">
                     {formatGrade(segment.averageGradePercent)}
                   </td>
@@ -185,7 +198,7 @@ function sortDescentSegments(
   );
 }
 
-function sortSegmentsByDifficulty(
+function sortHardestClimbSegments(
   left: TerrainSegmentSummary,
   right: TerrainSegmentSummary,
 ): number {
@@ -196,6 +209,21 @@ function sortSegmentsByDifficulty(
   );
 }
 
+function sortHardestDescentSegments(
+  left: TerrainSegmentSummary,
+  right: TerrainSegmentSummary,
+): number {
+  return (
+    right.difficultyScore - left.difficultyScore ||
+    right.totalDescentMeters - left.totalDescentMeters ||
+    right.distanceKm - left.distanceKm
+  );
+}
+
 function formatGrade(gradePercent: number): string {
   return `${gradePercent >= 0 ? "+" : ""}${gradePercent.toFixed(1)}%`;
+}
+
+function formatMeters(distanceMeters: number): string {
+  return `${Math.round(distanceMeters).toLocaleString("en-US")} m`;
 }
