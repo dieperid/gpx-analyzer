@@ -14,6 +14,12 @@ export type ProfileSegment = {
   maxGradePercent: number;
 };
 
+export type TerrainSegmentSummary = ProfileSegment & {
+  totalAscentMeters: number;
+  totalDescentMeters: number;
+  difficultyScore: number;
+};
+
 export type ProfileChartDatum = {
   distanceKm: number;
   elevation: number;
@@ -85,7 +91,7 @@ export function buildProfileChartData(
     segmentType: null,
     segment: null,
   }));
-  const intervals: ProfileInterval[] = [];
+  const { intervals: smoothedIntervals, segments } = buildTerrainAnalysis(route);
 
   for (let index = 1; index < route.elevationProfile.length; index += 1) {
     const previousSample = route.elevationProfile[index - 1];
@@ -102,30 +108,11 @@ export function buildProfileChartData(
         distanceDeltaMeters) *
       100;
     chartData[index].gradePercent = gradePercent;
-    intervals.push({
-      startIndex: index - 1,
-      endIndex: index,
-      startDistanceKm: previousSample.distanceMeters / 1000,
-      endDistanceKm: currentSample.distanceMeters / 1000,
-      distanceKm: distanceDeltaMeters / 1000,
-      gradePercent,
-      type: "rolling",
-    });
 
     if (chartData[index - 1].gradePercent === null) {
       chartData[index - 1].gradePercent = gradePercent;
     }
   }
-
-  const orientationWindowMeters = getOrientationWindowMeters(
-    route.totalDistanceMeters,
-  );
-  const orientedIntervals = classifyTerrainOrientation(
-    route.elevationProfile,
-    intervals,
-    orientationWindowMeters,
-  );
-  const smoothedIntervals = smoothTerrainInterruptions(orientedIntervals);
 
   for (const sample of chartData) {
     sample.climb = null;
@@ -143,7 +130,6 @@ export function buildProfileChartData(
     chartData[interval.endIndex].segmentType = interval.type;
   }
 
-  const segments = buildProfileSegments(smoothedIntervals, route.elevationProfile);
   for (const segment of segments) {
     for (let index = segment.startIndex; index <= segment.endIndex; index += 1) {
       chartData[index].segment = segment;
@@ -152,6 +138,12 @@ export function buildProfileChartData(
   }
 
   return chartData;
+}
+
+export function getTerrainSegments(
+  route: ParsedGpxRoute,
+): TerrainSegmentSummary[] {
+  return buildTerrainAnalysis(route).segments;
 }
 
 export function getElevationTicks(maxElevation: number): number[] {
@@ -196,6 +188,67 @@ export function getElevationTicks(maxElevation: number): number[] {
   }
 
   return ticks;
+}
+
+function buildTerrainAnalysis(route: ParsedGpxRoute): {
+  intervals: ProfileInterval[];
+  segments: TerrainSegmentSummary[];
+} {
+  const intervals = buildProfileIntervals(route.elevationProfile);
+
+  if (intervals.length === 0) {
+    return {
+      intervals: [],
+      segments: [],
+    };
+  }
+
+  const orientationWindowMeters = getOrientationWindowMeters(
+    route.totalDistanceMeters,
+  );
+  const orientedIntervals = classifyTerrainOrientation(
+    route.elevationProfile,
+    intervals,
+    orientationWindowMeters,
+  );
+  const smoothedIntervals = smoothTerrainInterruptions(orientedIntervals);
+
+  return {
+    intervals: smoothedIntervals,
+    segments: buildProfileSegments(smoothedIntervals, route.elevationProfile),
+  };
+}
+
+function buildProfileIntervals(samples: ElevationSample[]): ProfileInterval[] {
+  const intervals: ProfileInterval[] = [];
+
+  for (let index = 1; index < samples.length; index += 1) {
+    const previousSample = samples[index - 1];
+    const currentSample = samples[index];
+    const distanceDeltaMeters =
+      currentSample.distanceMeters - previousSample.distanceMeters;
+
+    if (distanceDeltaMeters <= 0) {
+      continue;
+    }
+
+    const gradePercent =
+      ((currentSample.elevation - previousSample.elevation) /
+        distanceDeltaMeters) *
+      100;
+
+    intervals.push({
+      startIndex: index - 1,
+      endIndex: index,
+      startDistanceKm: previousSample.distanceMeters / 1000,
+      endDistanceKm: currentSample.distanceMeters / 1000,
+      distanceKm: distanceDeltaMeters / 1000,
+      gradePercent,
+      type: "rolling",
+    });
+  }
+
+  return intervals;
 }
 
 function classifyTerrainOrientation(
@@ -408,12 +461,12 @@ function sumIntervalDistance(
 function buildProfileSegments(
   intervals: ProfileInterval[],
   samples: ElevationSample[],
-): ProfileSegment[] {
+): TerrainSegmentSummary[] {
   if (intervals.length === 0) {
     return [];
   }
 
-  const segments: ProfileSegment[] = [];
+  const segments: TerrainSegmentSummary[] = [];
   let currentGroup: ProfileInterval[] = [intervals[0]];
 
   for (let index = 1; index < intervals.length; index += 1) {
@@ -437,20 +490,33 @@ function createProfileSegment(
   id: number,
   intervals: ProfileInterval[],
   samples: ElevationSample[],
-): ProfileSegment {
+): TerrainSegmentSummary {
   const firstInterval = intervals[0];
   const lastInterval = intervals[intervals.length - 1];
   const distanceKm = intervals.reduce(
     (total, interval) => total + interval.distanceKm,
     0,
   );
-  const elevationDeltaMeters = intervals.reduce(
-    (total, interval) =>
-      total + (interval.gradePercent * interval.distanceKm * 1000) / 100,
+  const elevationDeltasMeters = intervals.map(
+    (interval) => (interval.gradePercent * interval.distanceKm * 1000) / 100,
+  );
+  const elevationDeltaMeters = elevationDeltasMeters.reduce(
+    (total, elevationDelta) => total + elevationDelta,
+    0,
+  );
+  const totalAscentMeters = elevationDeltasMeters.reduce(
+    (total, elevationDelta) =>
+      elevationDelta > 0 ? total + elevationDelta : total,
+    0,
+  );
+  const totalDescentMeters = elevationDeltasMeters.reduce(
+    (total, elevationDelta) =>
+      elevationDelta < 0 ? total + Math.abs(elevationDelta) : total,
     0,
   );
   const averageGradePercent =
     distanceKm > 0 ? (elevationDeltaMeters / (distanceKm * 1000)) * 100 : 0;
+  const difficultyScore = distanceKm * Math.abs(averageGradePercent) ** 2;
 
   return {
     id,
@@ -461,6 +527,9 @@ function createProfileSegment(
     endDistanceKm: lastInterval.endDistanceKm,
     distanceKm,
     averageGradePercent,
+    totalAscentMeters,
+    totalDescentMeters,
+    difficultyScore,
     maxGradePercent: getPeakGradePercent(
       firstInterval.type,
       samples,

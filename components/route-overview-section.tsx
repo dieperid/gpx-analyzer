@@ -73,7 +73,10 @@ function formatWeightedAverageSlope(route: ParsedGpxRoute): string {
 
 function showSpeedStrength(route: ParsedGpxRoute): string {
   const ratio = calculateAscentRatioPerKm(route);
-  console.log(ratio);
+  if (ratio === null) {
+    return "Unavailable";
+  }
+
   if (ratio >= 60) {
     return "Orienté force";
   } else if (Number(ratio) > 30 && Number(ratio) < 60) {

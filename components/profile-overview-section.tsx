@@ -1,5 +1,6 @@
 import ElevationProfilePanel from "@/components/elevation-profile-panel";
 import RouteOverviewSection from "@/components/route-overview-section";
+import ProfileSegmentInsights from "@/components/profile-segment-insights";
 import { type ParsedGpxRoute } from "@/lib/gpx";
 
 export default function ProfileOverviewSection({
@@ -23,6 +24,7 @@ export default function ProfileOverviewSection({
 
       <div className="px-6 py-6">
         <RouteOverviewSection route={route} fileName={fileName} embedded />
+        <ProfileSegmentInsights route={route} />
       </div>
     </section>
   );
