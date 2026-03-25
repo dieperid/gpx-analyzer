@@ -35,10 +35,6 @@ body {
     max-width: 1280px;
 }
 
-.print-only {
-    display: none;
-}
-
 .page-break-avoid {
     break-inside: avoid;
     page-break-inside: avoid;
@@ -55,10 +51,6 @@ body {
 
     .print-hidden {
         display: none !important;
-    }
-
-    .print-only {
-        display: block !important;
     }
 
     .print-shell {

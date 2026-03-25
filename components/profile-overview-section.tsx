@@ -55,28 +55,19 @@ export default function ProfileOverviewSection({
 
     setSelectionMode("detected");
     setDraft(
-      existingSegment
-        ? { ...existingSegment }
-        : {
-            id: null,
-            title: buildDefaultTitle(
-              segment.type === "climb"
-                ? "Climb"
-                : segment.type === "descent"
-                  ? "Descent"
-                  : "Segment",
-              segment.startDistanceKm * 1000,
-              segment.endDistanceKm * 1000,
-            ),
-            notes: "",
-            pacing: "",
-            nutrition: "",
-            targetTime: "",
-            startDistanceMeters: segment.startDistanceKm * 1000,
-            endDistanceMeters: segment.endDistanceKm * 1000,
-            source: "detected",
-            detectedSegmentId: segmentId,
-          },
+      createDraft({
+        existingSegment,
+        titlePrefix:
+          segment.type === "climb"
+            ? "Climb"
+            : segment.type === "descent"
+              ? "Descent"
+              : "Segment",
+        startDistanceMeters: segment.startDistanceKm * 1000,
+        endDistanceMeters: segment.endDistanceKm * 1000,
+        source: "detected",
+        detectedSegmentId: segmentId,
+      }),
     );
   }
 
@@ -93,35 +84,25 @@ export default function ProfileOverviewSection({
       endDistanceMeters,
       route.totalDistanceMeters,
     );
-    const existingSegment = strategySegments.find(
-      (segment) =>
-        segment.source === "custom" &&
-        Math.round(segment.startDistanceMeters) ===
-          Math.round(normalizedRange.startDistanceMeters) &&
-        Math.round(segment.endDistanceMeters) ===
-          Math.round(normalizedRange.endDistanceMeters),
+    const existingSegment = findMatchingStrategySegment(
+      strategySegments,
+      {
+        source: "custom",
+        detectedSegmentId: null,
+      },
+      normalizedRange,
     );
 
     setSelectionMode("custom");
     setDraft(
-      existingSegment
-        ? { ...existingSegment }
-        : {
-            id: null,
-            title: buildDefaultTitle(
-              "Custom segment",
-              normalizedRange.startDistanceMeters,
-              normalizedRange.endDistanceMeters,
-            ),
-            notes: "",
-            pacing: "",
-            nutrition: "",
-            targetTime: "",
-            startDistanceMeters: normalizedRange.startDistanceMeters,
-            endDistanceMeters: normalizedRange.endDistanceMeters,
-            source: "custom",
-            detectedSegmentId: null,
-          },
+      createDraft({
+        existingSegment,
+        titlePrefix: "Custom segment",
+        startDistanceMeters: normalizedRange.startDistanceMeters,
+        endDistanceMeters: normalizedRange.endDistanceMeters,
+        source: "custom",
+        detectedSegmentId: null,
+      }),
     );
   }
 
@@ -135,15 +116,13 @@ export default function ProfileOverviewSection({
       draft.endDistanceMeters,
       route.totalDistanceMeters,
     );
-    const matchingSegment = strategySegments.find(
-      (segment) =>
-        segment.id !== draft.id &&
-        segment.source === draft.source &&
-        segment.detectedSegmentId === draft.detectedSegmentId &&
-        Math.round(segment.startDistanceMeters) ===
-          Math.round(normalizedRange.startDistanceMeters) &&
-        Math.round(segment.endDistanceMeters) ===
-          Math.round(normalizedRange.endDistanceMeters),
+    const matchingSegment = findMatchingStrategySegment(
+      strategySegments.filter((segment) => segment.id !== draft.id),
+      {
+        source: draft.source,
+        detectedSegmentId: draft.detectedSegmentId,
+      },
+      normalizedRange,
     );
     const nextSegment: RaceStrategySegment = {
       ...draft,
@@ -212,14 +191,7 @@ export default function ProfileOverviewSection({
         embedded
         selectionMode={selectionMode}
         onSelectionModeChange={setSelectionMode}
-        selectedRange={
-          draft
-            ? {
-                startDistanceMeters: draft.startDistanceMeters,
-                endDistanceMeters: draft.endDistanceMeters,
-              }
-            : null
-        }
+        selectedRange={draft ? toSelectedRange(draft) : null}
         strategySegments={orderedStrategySegments}
         onDetectedSegmentSelect={handleDetectedSegmentSelect}
         onCustomRangeSelect={handleCustomRangeSelect}
@@ -272,4 +244,73 @@ function buildDefaultTitle(
 
 function formatDistanceValue(distanceMeters: number): string {
   return `${(distanceMeters / 1000).toFixed(2)} km`;
+}
+
+function createDraft({
+  existingSegment,
+  titlePrefix,
+  startDistanceMeters,
+  endDistanceMeters,
+  source,
+  detectedSegmentId,
+}: {
+  existingSegment: RaceStrategySegment | undefined;
+  titlePrefix: string;
+  startDistanceMeters: number;
+  endDistanceMeters: number;
+  source: RaceStrategySegment["source"];
+  detectedSegmentId: number | null;
+}): RaceStrategyDraft {
+  if (existingSegment) {
+    return { ...existingSegment };
+  }
+
+  return {
+    id: null,
+    title: buildDefaultTitle(
+      titlePrefix,
+      startDistanceMeters,
+      endDistanceMeters,
+    ),
+    notes: "",
+    pacing: "",
+    nutrition: "",
+    targetTime: "",
+    startDistanceMeters,
+    endDistanceMeters,
+    source,
+    detectedSegmentId,
+  };
+}
+
+function findMatchingStrategySegment(
+  strategySegments: RaceStrategySegment[],
+  segmentIdentity: {
+    source: RaceStrategySegment["source"];
+    detectedSegmentId: number | null;
+  },
+  normalizedRange: {
+    startDistanceMeters: number;
+    endDistanceMeters: number;
+  },
+): RaceStrategySegment | undefined {
+  return strategySegments.find(
+    (segment) =>
+      segment.source === segmentIdentity.source &&
+      segment.detectedSegmentId === segmentIdentity.detectedSegmentId &&
+      Math.round(segment.startDistanceMeters) ===
+        Math.round(normalizedRange.startDistanceMeters) &&
+      Math.round(segment.endDistanceMeters) ===
+        Math.round(normalizedRange.endDistanceMeters),
+  );
+}
+
+function toSelectedRange(draft: RaceStrategyDraft): {
+  startDistanceMeters: number;
+  endDistanceMeters: number;
+} {
+  return {
+    startDistanceMeters: draft.startDistanceMeters,
+    endDistanceMeters: draft.endDistanceMeters,
+  };
 }

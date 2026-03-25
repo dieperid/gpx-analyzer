@@ -1,6 +1,12 @@
 "use client";
 
-import { type ChangeEvent, type DragEvent, useEffect, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  type DragEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import ProfileOverviewSection from "@/components/profile-overview-section";
 import RouteMapSection from "@/components/route-map-section";
 import SplitMarkersSection from "@/components/split-markers-section";
@@ -31,6 +37,11 @@ type PersistedWorkspace = {
 };
 
 const LOCAL_STORAGE_KEY = "gpx-analyzer-workspace-v1";
+const EMPTY_TARGET_TIME_INPUT: TargetTimeInput = {
+  hours: "",
+  minutes: "",
+  seconds: "",
+};
 
 export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -39,11 +50,8 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [hasHydrated, setHasHydrated] = useState(false);
-  const [targetTimeInput, setTargetTimeInput] = useState<TargetTimeInput>({
-    hours: "",
-    minutes: "",
-    seconds: "",
-  });
+  const [targetTimeInput, setTargetTimeInput] =
+    useState<TargetTimeInput>(EMPTY_TARGET_TIME_INPUT);
   const [raceStrategySegments, setRaceStrategySegments] = useState<
     RaceStrategySegment[]
   >([]);
@@ -56,25 +64,18 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      const storedWorkspace = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+      const storedWorkspace = readStoredWorkspace();
 
       if (!storedWorkspace) {
         setHasHydrated(true);
         return;
       }
 
-      const parsedWorkspace = JSON.parse(storedWorkspace) as PersistedWorkspace;
-      setLoadedRoute(parsedWorkspace.loadedRoute);
-      setTargetTimeInput(
-        parsedWorkspace.targetTimeInput ?? {
-          hours: "",
-          minutes: "",
-          seconds: "",
-        },
-      );
-      setRaceStrategySegments(parsedWorkspace.raceStrategySegments ?? []);
+      setLoadedRoute(storedWorkspace.loadedRoute);
+      setTargetTimeInput(storedWorkspace.targetTimeInput ?? EMPTY_TARGET_TIME_INPUT);
+      setRaceStrategySegments(storedWorkspace.raceStrategySegments ?? []);
     } catch {
-      window.localStorage.removeItem(LOCAL_STORAGE_KEY);
+      clearStoredWorkspace();
     } finally {
       setHasHydrated(true);
     }
@@ -91,7 +92,7 @@ export default function Home() {
       raceStrategySegments,
     };
 
-    window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(workspace));
+    writeStoredWorkspace(workspace);
   }, [hasHydrated, loadedRoute, raceStrategySegments, targetTimeInput]);
 
   async function handleFileSelection(file: File | null) {
@@ -240,9 +241,9 @@ export default function Home() {
 
         <div className="print-hidden">
           <RouteMapSection
-          route={activeRoute}
-          fileName={loadedRoute?.fileName ?? null}
-          importId={loadedRoute?.importId ?? null}
+            route={activeRoute}
+            fileName={loadedRoute?.fileName ?? null}
+            importId={loadedRoute?.importId ?? null}
           />
         </div>
 
@@ -273,4 +274,22 @@ export default function Home() {
       </div>
     </main>
   );
+}
+
+function readStoredWorkspace(): PersistedWorkspace | null {
+  const storedWorkspace = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+
+  if (!storedWorkspace) {
+    return null;
+  }
+
+  return JSON.parse(storedWorkspace) as PersistedWorkspace;
+}
+
+function writeStoredWorkspace(workspace: PersistedWorkspace): void {
+  window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(workspace));
+}
+
+function clearStoredWorkspace(): void {
+  window.localStorage.removeItem(LOCAL_STORAGE_KEY);
 }
