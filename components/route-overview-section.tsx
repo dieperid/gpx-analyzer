@@ -29,24 +29,31 @@ export default function RouteOverviewSection({
 
       {route && (
         <div
-          className={`${embedded ? "" : "mt-6"} grid gap-4 md:grid-cols-2 xl:grid-cols-5`}
+          className={`${embedded ? "" : "mt-6"} grid gap-4 md:grid-cols-2 lg:grid-cols-6`}
         >
           <MetricCard
             label="Distance"
             value={formatDistance(route.totalDistanceMeters)}
           />
           <MetricCard
-            label="Total ascent"
+            label="Total D+"
             value={formatElevation(route.totalAscentMeters)}
           />
           <MetricCard
-            label="Total descent"
+            label="Total D-"
             value={formatElevation(route.totalDescentMeters)}
           />
-          <MetricCard label="D+ / km" value={formatAscentRatioPerKm(route)} />
+          <MetricCard
+            label="Ratio D+ / km"
+            value={formatAscentRatioPerKm(route)}
+          />
           <MetricCard
             label="Weighted avg slope"
             value={formatWeightedAverageSlope(route)}
+          />
+          <MetricCard
+            label="Spectre force vitesse"
+            value={showSpeedStrength(route)}
           />
         </div>
       )}
@@ -62,4 +69,16 @@ function formatAscentRatioPerKm(route: ParsedGpxRoute): string {
 function formatWeightedAverageSlope(route: ParsedGpxRoute): string {
   const value = calculateWeightedAverageSlope(route);
   return value === null ? "Unavailable" : `${value.toFixed(1)}%`;
+}
+
+function showSpeedStrength(route: ParsedGpxRoute): string {
+  const ratio = calculateAscentRatioPerKm(route);
+  console.log(ratio);
+  if (ratio >= 60) {
+    return "Orienté force";
+  } else if (Number(ratio) > 30 && Number(ratio) < 60) {
+    return "Orienté force-vitesse";
+  } else {
+    return "Orienté vitesse";
+  }
 }
