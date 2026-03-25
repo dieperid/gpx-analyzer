@@ -1,3 +1,8 @@
+import {
+  calculateElevationGainLoss,
+  smoothElevationSamples,
+} from "@/lib/elevation-analysis";
+
 export type GpxPoint = {
   latitude: number;
   longitude: number;
@@ -247,10 +252,10 @@ function analyzeRoute(points: GpxPoint[]): {
   totalDescentMeters: number | null;
 } {
   let totalDistanceMeters = 0;
-  const elevationProfile: ElevationSample[] = [];
+  const rawElevationProfile: ElevationSample[] = [];
 
   if (points[0]?.elevation !== null) {
-    elevationProfile.push({
+    rawElevationProfile.push({
       distanceMeters: 0,
       elevation: points[0].elevation,
     });
@@ -261,12 +266,14 @@ function analyzeRoute(points: GpxPoint[]): {
 
     const elevation = points[index].elevation;
     if (elevation !== null) {
-      elevationProfile.push({
+      rawElevationProfile.push({
         distanceMeters: totalDistanceMeters,
         elevation,
       });
     }
   }
+
+  const elevationProfile = smoothElevationSamples(rawElevationProfile);
 
   if (elevationProfile.length < 2) {
     return {
@@ -277,19 +284,8 @@ function analyzeRoute(points: GpxPoint[]): {
     };
   }
 
-  let totalAscentMeters = 0;
-  let totalDescentMeters = 0;
-
-  for (let index = 1; index < elevationProfile.length; index += 1) {
-    const elevationDelta =
-      elevationProfile[index].elevation - elevationProfile[index - 1].elevation;
-
-    if (elevationDelta > 0) {
-      totalAscentMeters += elevationDelta;
-    } else if (elevationDelta < 0) {
-      totalDescentMeters += Math.abs(elevationDelta);
-    }
-  }
+  const { gainMeters: totalAscentMeters, lossMeters: totalDescentMeters } =
+    calculateElevationGainLoss(elevationProfile);
 
   return {
     totalDistanceMeters,

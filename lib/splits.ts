@@ -1,3 +1,7 @@
+import {
+  calculateElevationGainLoss,
+  smoothElevationSamples,
+} from "@/lib/elevation-analysis";
 import { type ParsedGpxRoute } from "@/lib/gpx";
 
 export type SplitMarker = {
@@ -198,19 +202,8 @@ function calculateElevationChangeInRange(
   }
 
   samples.sort((left, right) => left.distanceMeters - right.distanceMeters);
-
-  let gainMeters = 0;
-  let lossMeters = 0;
-
-  for (let index = 1; index < samples.length; index += 1) {
-    const elevationDelta = samples[index].elevation - samples[index - 1].elevation;
-
-    if (elevationDelta > 0) {
-      gainMeters += elevationDelta;
-    } else if (elevationDelta < 0) {
-      lossMeters += Math.abs(elevationDelta);
-    }
-  }
+  const smoothedSamples = smoothElevationSamples(samples);
+  const { gainMeters, lossMeters } = calculateElevationGainLoss(smoothedSamples);
 
   return {
     gainMeters,
@@ -224,7 +217,7 @@ function buildCumulativeDistances(route: ParsedGpxRoute): number[] {
   for (let index = 1; index < route.points.length; index += 1) {
     cumulativeDistances.push(
       cumulativeDistances[index - 1] +
-        haversineDistance(route.points[index - 1], route.points[index]),
+      haversineDistance(route.points[index - 1], route.points[index]),
     );
   }
 
