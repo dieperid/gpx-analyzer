@@ -34,3 +34,39 @@ body {
 .main-class {
     max-width: 1280px;
 }
+
+.print-only {
+    display: none;
+}
+
+.page-break-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+@media print {
+    :root {
+        --background: #ffffff;
+    }
+
+    body {
+        background: #ffffff;
+    }
+
+    .print-hidden {
+        display: none !important;
+    }
+
+    .print-only {
+        display: block !important;
+    }
+
+    .print-shell {
+        background: #ffffff !important;
+        padding: 0 !important;
+    }
+
+    .main-class {
+        max-width: none;
+    }
+}

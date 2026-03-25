@@ -36,7 +36,7 @@ export default function ProfileSegmentInsights({
       .sort(sortHardestDescentSegments)[0] ?? null;
 
   return (
-    <section className="border-t border-slate-100 pt-2">
+    <section className="print-hidden border-t border-slate-100 pt-2">
       <div className="mt-6 grid gap-5 xl:grid-cols-2">
         <SegmentTableCard
           title="Top 5 climbs"

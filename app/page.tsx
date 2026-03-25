@@ -1,6 +1,6 @@
 "use client";
 
-import { type ChangeEvent, type DragEvent, useRef, useState } from "react";
+import { type ChangeEvent, type DragEvent, useEffect, useRef, useState } from "react";
 import ProfileOverviewSection from "@/components/profile-overview-section";
 import RouteMapSection from "@/components/route-map-section";
 import SplitMarkersSection from "@/components/split-markers-section";
@@ -15,6 +15,7 @@ import {
   type ParsedGpxRoute,
 } from "@/lib/gpx";
 import { buildSplitMarkers } from "@/lib/splits";
+import { type RaceStrategySegment } from "@/lib/race-strategy";
 import { parseTargetTimeInput, type TargetTimeInput } from "@/lib/target-time";
 
 type LoadedRoute = {
@@ -23,23 +24,75 @@ type LoadedRoute = {
   route: ParsedGpxRoute;
 };
 
+type PersistedWorkspace = {
+  loadedRoute: LoadedRoute | null;
+  targetTimeInput: TargetTimeInput;
+  raceStrategySegments: RaceStrategySegment[];
+};
+
+const LOCAL_STORAGE_KEY = "gpx-analyzer-workspace-v1";
+
 export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [loadedRoute, setLoadedRoute] = useState<LoadedRoute | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [hasHydrated, setHasHydrated] = useState(false);
   const [targetTimeInput, setTargetTimeInput] = useState<TargetTimeInput>({
     hours: "",
     minutes: "",
     seconds: "",
   });
+  const [raceStrategySegments, setRaceStrategySegments] = useState<
+    RaceStrategySegment[]
+  >([]);
   const activeRoute = loadedRoute?.route ?? null;
   const targetTime = parseTargetTimeInput(targetTimeInput);
   const splitMarkers =
     activeRoute !== null && targetTime.status === "valid"
       ? buildSplitMarkers(activeRoute, targetTime.totalSeconds)
       : [];
+
+  useEffect(() => {
+    try {
+      const storedWorkspace = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+
+      if (!storedWorkspace) {
+        setHasHydrated(true);
+        return;
+      }
+
+      const parsedWorkspace = JSON.parse(storedWorkspace) as PersistedWorkspace;
+      setLoadedRoute(parsedWorkspace.loadedRoute);
+      setTargetTimeInput(
+        parsedWorkspace.targetTimeInput ?? {
+          hours: "",
+          minutes: "",
+          seconds: "",
+        },
+      );
+      setRaceStrategySegments(parsedWorkspace.raceStrategySegments ?? []);
+    } catch {
+      window.localStorage.removeItem(LOCAL_STORAGE_KEY);
+    } finally {
+      setHasHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
+    const workspace: PersistedWorkspace = {
+      loadedRoute,
+      targetTimeInput,
+      raceStrategySegments,
+    };
+
+    window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(workspace));
+  }, [hasHydrated, loadedRoute, raceStrategySegments, targetTimeInput]);
 
   async function handleFileSelection(file: File | null) {
     if (!file) {
@@ -48,6 +101,7 @@ export default function Home() {
 
     if (!file.name.toLowerCase().endsWith(".gpx")) {
       setLoadedRoute(null);
+      setRaceStrategySegments([]);
       setErrorMessage("Please select a file with the .gpx extension.");
       return;
     }
@@ -66,6 +120,7 @@ export default function Home() {
         importId: crypto.randomUUID(),
         route,
       });
+      setRaceStrategySegments([]);
     } catch (error) {
       if (
         error instanceof EmptyGpxError ||
@@ -111,9 +166,9 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.24),transparent_28%),linear-gradient(180deg,#fffaf0_0%,#f8fafc_45%,#eef2ff_100%)] px-6 py-10 text-slate-950 sm:px-10 lg:px-16">
+    <main className="print-shell min-h-screen bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.24),transparent_28%),linear-gradient(180deg,#fffaf0_0%,#f8fafc_45%,#eef2ff_100%)] px-6 py-10 text-slate-950 sm:px-10 lg:px-16">
       <div className="mx-auto flex w-full main-class flex-col gap-8">
-        <section className="overflow-hidden rounded-4xl border border-white/70 bg-white/75 p-8 shadow-[0_30px_80px_rgba(15,23,42,0.12)] backdrop-blur md:p-10">
+        <section className="print-hidden overflow-hidden rounded-4xl border border-white/70 bg-white/75 p-8 shadow-[0_30px_80px_rgba(15,23,42,0.12)] backdrop-blur md:p-10">
           <div className="space-y-6">
             <div className="inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
               GPX Analyzer
@@ -183,18 +238,23 @@ export default function Home() {
           </div>
         </section>
 
-        <RouteMapSection
+        <div className="print-hidden">
+          <RouteMapSection
           route={activeRoute}
           fileName={loadedRoute?.fileName ?? null}
           importId={loadedRoute?.importId ?? null}
-        />
+          />
+        </div>
 
         <ProfileOverviewSection
+          key={loadedRoute?.importId ?? "no-route"}
           route={activeRoute}
           fileName={loadedRoute?.fileName ?? null}
+          strategySegments={raceStrategySegments}
+          onStrategySegmentsChange={setRaceStrategySegments}
         />
 
-        <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <section className="print-hidden grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <TargetTimeSection
             value={targetTimeInput}
             targetTime={targetTime}
@@ -203,11 +263,13 @@ export default function Home() {
           <TargetTimeSummary route={activeRoute} targetTime={targetTime} />
         </section>
 
-        <SplitMarkersSection
-          route={activeRoute}
-          targetTime={targetTime}
-          splitMarkers={splitMarkers}
-        />
+        <div className="print-hidden">
+          <SplitMarkersSection
+            route={activeRoute}
+            targetTime={targetTime}
+            splitMarkers={splitMarkers}
+          />
+        </div>
       </div>
     </main>
   );

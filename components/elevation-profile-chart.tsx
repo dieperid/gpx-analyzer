@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -17,14 +18,66 @@ import {
   type ProfileChartDatum,
   TERRAIN_STYLE,
 } from "@/lib/elevation-profile";
+import {
+  type RaceStrategySegment,
+  type RaceStrategySelectionMode,
+} from "@/lib/race-strategy";
+
+const PLOT_LEFT_GUTTER_PX = 56;
+const PLOT_RIGHT_GUTTER_PX = 14;
+const PLOT_TOP_GUTTER_PX = 10;
+const PLOT_BOTTOM_GUTTER_PX = 24;
+const MIN_CUSTOM_SELECTION_DISTANCE_METERS = 25;
 
 export default function ElevationProfileChart({
   route,
   fullBleed = false,
+  selectionMode = "detected",
+  selectedRange = null,
+  strategySegments = [],
+  onDetectedSegmentSelect,
+  onCustomRangeSelect,
 }: {
   route: ParsedGpxRoute;
   fullBleed?: boolean;
+  selectionMode?: RaceStrategySelectionMode;
+  selectedRange?: {
+    startDistanceMeters: number;
+    endDistanceMeters: number;
+  } | null;
+  strategySegments?: RaceStrategySegment[];
+  onDetectedSegmentSelect?: (segmentId: number) => void;
+  onCustomRangeSelect?: (
+    startDistanceMeters: number,
+    endDistanceMeters: number,
+  ) => void;
 }) {
+  const plotAreaRef = useRef<HTMLDivElement>(null);
+  const [plotWidth, setPlotWidth] = useState(0);
+  const [dragRange, setDragRange] = useState<{
+    startDistanceMeters: number;
+    endDistanceMeters: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const plotArea = plotAreaRef.current;
+
+    if (!plotArea) {
+      return;
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      setPlotWidth(plotArea.getBoundingClientRect().width);
+    });
+
+    setPlotWidth(plotArea.getBoundingClientRect().width);
+    resizeObserver.observe(plotArea);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
   if (route.elevationProfile.length < 2) {
     return (
       <div
@@ -43,6 +96,7 @@ export default function ElevationProfileChart({
   const maxElevation = Math.max(...elevations);
   const yAxisTicks = getElevationTicks(maxElevation);
   const yAxisMax = yAxisTicks[yAxisTicks.length - 1];
+  const activeRange = dragRange ?? selectedRange;
 
   return (
     <div
@@ -51,78 +105,210 @@ export default function ElevationProfileChart({
       }`}
     >
       <div
-        className={`h-56 w-full ${fullBleed ? "pr-3" : ""}`}
+        className={`relative h-56 w-full ${fullBleed ? "pr-3" : ""}`}
         role="img"
         aria-label="Elevation profile chart"
+        onClick={(event) => {
+          if (selectionMode !== "detected") {
+            return;
+          }
+
+          const distanceMeters = getDistanceFromPointer(
+            event.clientX,
+            plotAreaRef.current,
+            route.totalDistanceMeters,
+          );
+
+          if (distanceMeters === null) {
+            return;
+          }
+
+          const segmentId = getDetectedSegmentIdFromDistance(
+            chartData,
+            distanceMeters,
+          );
+
+          if (segmentId !== null) {
+            onDetectedSegmentSelect?.(segmentId);
+          }
+        }}
       >
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={chartData}
-            margin={{ top: 10, right: 14, bottom: 6, left: 0 }}
-          >
-            <CartesianGrid
-              vertical={false}
-              stroke="rgba(148,163,184,0.18)"
-              strokeDasharray="3 3"
+        <div className="relative z-20 h-full w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={chartData}
+              margin={{ top: 10, right: 14, bottom: 6, left: 0 }}
+            >
+              <CartesianGrid
+                vertical={false}
+                stroke="rgba(148,163,184,0.18)"
+                strokeDasharray="3 3"
+              />
+              <XAxis
+                dataKey="distanceKm"
+                type="number"
+                domain={[0, "dataMax"]}
+                tickFormatter={formatDistanceTickLabel}
+                tick={{ fill: "#64748b", fontSize: 12 }}
+                axisLine={{ stroke: "rgba(148,163,184,0.45)", strokeWidth: 1 }}
+                tickLine={false}
+              />
+              <YAxis
+                domain={[0, yAxisMax]}
+                ticks={yAxisTicks}
+                tickFormatter={formatElevationTickLabel}
+                tick={{ fill: "#64748b", fontSize: 12 }}
+                axisLine={{ stroke: "rgba(148,163,184,0.45)", strokeWidth: 1 }}
+                tickLine={false}
+                width={56}
+              />
+              <Tooltip content={<ProfileTooltip />} />
+              <Legend />
+              <Line
+                dataKey="climb"
+                type="monotone"
+                stroke={TERRAIN_STYLE.climb.color}
+                strokeWidth={3}
+                dot={false}
+                activeDot={{ r: 4, fill: TERRAIN_STYLE.climb.color }}
+                connectNulls={false}
+                isAnimationActive={false}
+                name={TERRAIN_STYLE.climb.label}
+              />
+              <Line
+                dataKey="rolling"
+                type="monotone"
+                stroke={TERRAIN_STYLE.rolling.color}
+                strokeWidth={3}
+                dot={false}
+                activeDot={{ r: 4, fill: TERRAIN_STYLE.rolling.color }}
+                connectNulls={false}
+                isAnimationActive={false}
+                name={TERRAIN_STYLE.rolling.label}
+              />
+              <Line
+                dataKey="descent"
+                type="monotone"
+                stroke={TERRAIN_STYLE.descent.color}
+                strokeWidth={3}
+                dot={false}
+                activeDot={{ r: 4, fill: TERRAIN_STYLE.descent.color }}
+                connectNulls={false}
+                isAnimationActive={false}
+                name={TERRAIN_STYLE.descent.label}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div
+          ref={plotAreaRef}
+          className="pointer-events-none absolute z-10"
+          style={{
+            left: `${PLOT_LEFT_GUTTER_PX}px`,
+            right: `${PLOT_RIGHT_GUTTER_PX}px`,
+            top: `${PLOT_TOP_GUTTER_PX}px`,
+            bottom: `${PLOT_BOTTOM_GUTTER_PX}px`,
+          }}
+        >
+          {strategySegments.map((segment, index) => (
+            <StrategySegmentOverlay
+              key={segment.id}
+              segment={segment}
+              index={index}
+              totalDistanceMeters={route.totalDistanceMeters}
+              plotWidth={plotWidth}
             />
-            <XAxis
-              dataKey="distanceKm"
-              type="number"
-              domain={[0, "dataMax"]}
-              tickFormatter={formatDistanceTickLabel}
-              tick={{ fill: "#64748b", fontSize: 12 }}
-              axisLine={{ stroke: "rgba(148,163,184,0.45)", strokeWidth: 1 }}
-              tickLine={false}
+          ))}
+
+          {activeRange ? (
+            <SelectedRangeOverlay
+              startDistanceMeters={activeRange.startDistanceMeters}
+              endDistanceMeters={activeRange.endDistanceMeters}
+              totalDistanceMeters={route.totalDistanceMeters}
             />
-            <YAxis
-              domain={[0, yAxisMax]}
-              ticks={yAxisTicks}
-              tickFormatter={formatElevationTickLabel}
-              tick={{ fill: "#64748b", fontSize: 12 }}
-              axisLine={{ stroke: "rgba(148,163,184,0.45)", strokeWidth: 1 }}
-              tickLine={false}
-              width={56}
-            />
-            <Tooltip
-              cursor={{ stroke: "rgba(148,163,184,0.35)", strokeWidth: 1 }}
-              content={<ProfileTooltip />}
-            />
-            <Legend />
-            <Line
-              dataKey="climb"
-              type="monotone"
-              stroke={TERRAIN_STYLE.climb.color}
-              strokeWidth={3}
-              dot={false}
-              activeDot={{ r: 4, fill: TERRAIN_STYLE.climb.color }}
-              connectNulls={false}
-              isAnimationActive={false}
-              name={TERRAIN_STYLE.climb.label}
-            />
-            <Line
-              dataKey="rolling"
-              type="monotone"
-              stroke={TERRAIN_STYLE.rolling.color}
-              strokeWidth={3}
-              dot={false}
-              activeDot={{ r: 4, fill: TERRAIN_STYLE.rolling.color }}
-              connectNulls={false}
-              isAnimationActive={false}
-              name={TERRAIN_STYLE.rolling.label}
-            />
-            <Line
-              dataKey="descent"
-              type="monotone"
-              stroke={TERRAIN_STYLE.descent.color}
-              strokeWidth={3}
-              dot={false}
-              activeDot={{ r: 4, fill: TERRAIN_STYLE.descent.color }}
-              connectNulls={false}
-              isAnimationActive={false}
-              name={TERRAIN_STYLE.descent.label}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+          ) : null}
+        </div>
+
+        {selectionMode === "custom" ? (
+          <div
+            className="absolute z-30 cursor-crosshair"
+            style={{
+              left: `${PLOT_LEFT_GUTTER_PX}px`,
+              right: `${PLOT_RIGHT_GUTTER_PX}px`,
+              top: `${PLOT_TOP_GUTTER_PX}px`,
+              bottom: `${PLOT_BOTTOM_GUTTER_PX}px`,
+            }}
+            onPointerDown={(event) => {
+              const startDistanceMeters = getDistanceFromPointer(
+                event.clientX,
+                plotAreaRef.current,
+                route.totalDistanceMeters,
+              );
+
+              if (startDistanceMeters === null) {
+                return;
+              }
+
+              event.currentTarget.setPointerCapture(event.pointerId);
+              setDragRange({
+                startDistanceMeters,
+                endDistanceMeters: startDistanceMeters,
+              });
+            }}
+            onPointerMove={(event) => {
+              if (dragRange === null) {
+                return;
+              }
+
+              const endDistanceMeters = getDistanceFromPointer(
+                event.clientX,
+                plotAreaRef.current,
+                route.totalDistanceMeters,
+              );
+
+              if (endDistanceMeters === null) {
+                return;
+              }
+
+              setDragRange((currentRange) =>
+                currentRange === null
+                  ? null
+                  : {
+                      ...currentRange,
+                      endDistanceMeters,
+                    },
+              );
+            }}
+            onPointerUp={(event) => {
+              event.currentTarget.releasePointerCapture(event.pointerId);
+
+              if (dragRange === null) {
+                return;
+              }
+
+              const normalizedRange = normalizeRange(
+                dragRange.startDistanceMeters,
+                dragRange.endDistanceMeters,
+              );
+
+              setDragRange(null);
+
+              if (
+                normalizedRange.endDistanceMeters -
+                  normalizedRange.startDistanceMeters <
+                MIN_CUSTOM_SELECTION_DISTANCE_METERS
+              ) {
+                return;
+              }
+
+              onCustomRangeSelect?.(
+                normalizedRange.startDistanceMeters,
+                normalizedRange.endDistanceMeters,
+              );
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -188,6 +374,132 @@ function ProfileTooltip({
       ) : null}
     </div>
   );
+}
+
+function StrategySegmentOverlay({
+  segment,
+  index,
+  totalDistanceMeters,
+  plotWidth,
+}: {
+  segment: RaceStrategySegment;
+  index: number;
+  totalDistanceMeters: number;
+  plotWidth: number;
+}) {
+  const normalizedRange = normalizeRange(
+    segment.startDistanceMeters,
+    segment.endDistanceMeters,
+  );
+  const leftPercent =
+    (normalizedRange.startDistanceMeters / totalDistanceMeters) * 100;
+  const widthPercent = Math.max(
+    ((normalizedRange.endDistanceMeters - normalizedRange.startDistanceMeters) /
+      totalDistanceMeters) *
+      100,
+    plotWidth > 0 ? (26 / plotWidth) * 100 : 0,
+  );
+
+  return (
+    <div
+      className="absolute bottom-6 top-5 rounded-xl border border-amber-500/50 bg-amber-300/18"
+      style={{
+        left: `${leftPercent}%`,
+        width: `${widthPercent}%`,
+      }}
+    >
+      <div className="absolute left-1 top-1 max-w-[calc(100%-0.5rem)] truncate rounded-full bg-white/90 px-2 py-1 text-[11px] font-semibold text-slate-800 shadow-sm">
+        {index + 1}. {segment.title}
+      </div>
+    </div>
+  );
+}
+
+function SelectedRangeOverlay({
+  startDistanceMeters,
+  endDistanceMeters,
+  totalDistanceMeters,
+}: {
+  startDistanceMeters: number;
+  endDistanceMeters: number;
+  totalDistanceMeters: number;
+}) {
+  const normalizedRange = normalizeRange(
+    startDistanceMeters,
+    endDistanceMeters,
+  );
+  const leftPercent =
+    (normalizedRange.startDistanceMeters / totalDistanceMeters) * 100;
+  const widthPercent =
+    ((normalizedRange.endDistanceMeters - normalizedRange.startDistanceMeters) /
+      totalDistanceMeters) *
+    100;
+
+  return (
+    <div
+      className="absolute inset-y-2 rounded-xl border-2 border-dashed border-amber-500 bg-amber-300/12"
+      style={{
+        left: `${leftPercent}%`,
+        width: `${Math.max(widthPercent, 0.5)}%`,
+      }}
+    />
+  );
+}
+
+function getDistanceFromPointer(
+  clientX: number,
+  plotArea: HTMLDivElement | null,
+  totalDistanceMeters: number,
+): number | null {
+  if (!plotArea) {
+    return null;
+  }
+
+  const bounds = plotArea.getBoundingClientRect();
+  const relativeX = clamp((clientX - bounds.left) / bounds.width, 0, 1);
+
+  return relativeX * totalDistanceMeters;
+}
+
+function getDetectedSegmentIdFromDistance(
+  chartData: ProfileChartDatum[],
+  distanceMeters: number,
+): number | null {
+  let closestSample: ProfileChartDatum | null = null;
+  let closestDistanceDelta = Number.POSITIVE_INFINITY;
+
+  for (const sample of chartData) {
+    const distanceDelta = Math.abs(sample.distanceKm * 1000 - distanceMeters);
+
+    if (distanceDelta < closestDistanceDelta) {
+      closestSample = sample;
+      closestDistanceDelta = distanceDelta;
+    }
+  }
+
+  return closestSample?.segment?.id ?? null;
+}
+
+function normalizeRange(
+  startDistanceMeters: number,
+  endDistanceMeters: number,
+): {
+  startDistanceMeters: number;
+  endDistanceMeters: number;
+} {
+  return startDistanceMeters <= endDistanceMeters
+    ? {
+        startDistanceMeters,
+        endDistanceMeters,
+      }
+    : {
+        startDistanceMeters: endDistanceMeters,
+        endDistanceMeters: startDistanceMeters,
+      };
+}
+
+function clamp(value: number, minValue: number, maxValue: number): number {
+  return Math.min(maxValue, Math.max(minValue, value));
 }
 
 function formatDistanceTickLabel(distanceKm: number): string {
